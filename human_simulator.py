@@ -38,7 +38,7 @@ class Human:
     The plan of what to write next proposed by your ChatGPT assistant:
     {user_edited_plan}
 
-    Now start writing, organize your output by strictly following the output format as below,所有输出仍然保持是中文:
+    Now start writing, organize your output by strictly following the output format as below:
     
     Extended Paragraph: 
     <string of output paragraph>, around 40-50 sentences.

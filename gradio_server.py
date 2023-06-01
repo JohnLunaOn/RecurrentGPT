@@ -5,6 +5,7 @@ from human_simulator import Human
 from sentence_transformers import SentenceTransformer
 from utils import get_init, parse_instructions
 import re
+import hashlib
 
 # from urllib.parse import quote_plus
 # from pymongo import MongoClient
@@ -53,8 +54,8 @@ def init(novel_type, description, request: gr.Request):
     if novel_type == "":
         novel_type = "Science Fiction"
     global _CACHE
-    cookie = request.headers['cookie']
-    cookie = cookie.split('; _gat_gtag')[0]
+    cookie = request.headers['cookie'].split('; _gat_gtag')[0]
+    cookie = hashlib.md5(cookie.encode('utf-8')).hexdigest()
     # prepare first init
     init_paragraphs = get_init(text=init_prompt(novel_type,description))
     # print(init_paragraphs)
@@ -83,9 +84,9 @@ def step(short_memory, long_memory, instruction1, instruction2, instruction3, cu
         return "", "", "", "", "", ""
     global _CACHE
     # print(list(_CACHE.keys()))
-    # print(request.headers.get('cookie'))
-    cookie = request.headers['cookie']
-    cookie = cookie.split('; _gat_gtag')[0]
+
+    cookie = request.headers['cookie'].split('; _gat_gtag')[0]
+    cookie = hashlib.md5(cookie.encode('utf-8')).hexdigest()
     cache = _CACHE[cookie]
 
     if "writer" not in cache:
@@ -127,9 +128,8 @@ def controled_step(short_memory, long_memory, selected_instruction, current_para
         return "", "", "", "", "", ""
     global _CACHE
     # print(list(_CACHE.keys()))
-    # print(request.headers.get('cookie'))
-    cookie = request.headers['cookie']
-    cookie = cookie.split('; _gat_gtag')[0]
+    cookie = request.headers['cookie'].split('; _gat_gtag')[0]
+    cookie = hashlib.md5(cookie.encode('utf-8')).hexdigest()
     cache = _CACHE[cookie]
     if "writer" not in cache:
         start_input_to_human = cache["start_input_to_human"]
@@ -137,7 +137,7 @@ def controled_step(short_memory, long_memory, selected_instruction, current_para
         init_paragraphs = cache["init_paragraphs"]
         human = Human(input=start_input_to_human,
                       memory=None, embedder=embedder)
-        human.step_with_edit()
+        human.step()
         start_short_memory = init_paragraphs['Summary']
         writer_start_input = human.output
 
@@ -154,7 +154,7 @@ def controled_step(short_memory, long_memory, selected_instruction, current_para
         output['output_memory'] = short_memory
         output['output_instruction'] = selected_instruction
         human.input = output
-        human.step_with_edit()
+        human.step()
         writer.input = human.output
         writer.step()
 
@@ -278,5 +278,5 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
     demo.queue(concurrency_count=1)
 
 if __name__ == "__main__":
-    demo.launch(server_port=8005, share=True,
+    demo.launch(server_port=8005, share=False,
                 server_name="0.0.0.0", show_api=False)
