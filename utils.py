@@ -15,12 +15,49 @@ def get_api_response(content: str, max_tokens=None):
         temperature=0.5,  
         max_tokens=max_tokens
     )
-    
+    print("OpenAI ChatAPI Response:")
+    print(response)
     return response['choices'][0]['message']['content']
 
 def get_content_between_a_b(a,b,text):
     return re.search(f"{a}(.*?)\n{b}", text, re.DOTALL).group(1).strip()
 
+def get_chapter_init(prompt):
+    if prompt:
+        response = get_api_response(prompt)
+        print(response)
+
+    else:
+        print("ERROR - prompt is empty")
+        return None
+    
+    paragraphs = {
+        "Chapter name":"",
+        "Outline":"",
+        "Paragraph 1":"",
+        "Paragraph 2":"",
+        "Paragraph 3":"",
+        "Summary": "",
+        "Instruction 1":"",
+        "Instruction 2":"", 
+        "Instruction 3":""    
+    }
+    paragraphs['Chapter name'] = get_content_between_a_b('Chapter 1:','Outline',response)
+    paragraphs['Outline'] = get_content_between_a_b('Outline:','Paragraph',response)
+    paragraphs['Paragraph 1'] = get_content_between_a_b('Paragraph 1:','Paragraph 2:',response)
+    paragraphs['Paragraph 2'] = get_content_between_a_b('Paragraph 2:','Paragraph 3:',response)
+    paragraphs['Paragraph 3'] = get_content_between_a_b('Paragraph 3:','Summary',response)
+    paragraphs['Summary'] = get_content_between_a_b('Summary:','Instruction 1',response)
+    paragraphs['Instruction 1'] = get_content_between_a_b('Instruction 1:','Instruction 2',response)
+    paragraphs['Instruction 2'] = get_content_between_a_b('Instruction 2:','Instruction 3',response)
+    lines = response.splitlines()
+    # content of Instruction 3 may be in the same line with I3 or in the next line
+    if lines[-1] != '\n' and lines[-1].startswith('Instruction 3'):
+        paragraphs['Instruction 3'] = lines[-1][len("Instruction 3:"):]
+    elif lines[-1] != '\n':
+        paragraphs['Instruction 3'] = lines[-1]
+
+    return paragraphs
 
 def get_init(init_text=None,text=None,response_file=None):
     """
