@@ -8,7 +8,8 @@ from sentence_transformers import  util
 
 class RecurrentGPT:
 
-    def __init__(self, input, short_memory, long_memory, memory_index, embedder):
+    def __init__(self, input, short_memory, long_memory, memory_index, embedder, auto_generate=True):
+        self.auto = auto_generate
         self.input = input
         self.short_memory = short_memory
         self.long_memory = long_memory
@@ -43,7 +44,7 @@ class RecurrentGPT:
 
         input_text = f"""I need you to help me write a novel. Now I give you a memory (a brief summary) of 400 words, you should use it to store the key content of what has been written so that you can keep track of very long context. For each time, I will give you your current memory (a brief summary of previous stories. You should use it to store the key content of what has been written so that you can keep track of very long context), the previously written paragraph, and instructions on what to write in the next paragraph. 
     I need you to write:
-    1. Output Paragraph: the next paragraph of the novel. The output paragraph should contain around 20 sentences and should follow the input instructions.
+    1. Output Paragraph: the next paragraph of the novel in similar writing style of Input Paragraph and Input Related Paragraphs. The output paragraph should contain around 20 sentences and should follow the input instructions.
     2. Output Memory: The updated memory. You should first explain which sentences in the input memory are no longer necessary and why, and then explain what needs to be added into the memory and why. After that you should write the updated memory. The updated memory should be similar to the input memory except the parts you previously thought that should be deleted or added. The updated memory should only store key information. The updated memory should never exceed 20 sentences!
     3. Output Instruction:  instructions of what to write next (after what you have written). You should output 3 different instructions, each is a possible interesting continuation of the story. Each output instruction should contain around 5 sentences
     Here are the inputs: 
@@ -62,7 +63,7 @@ class RecurrentGPT:
     
     Now start writing, organize your output by strictly following the output format as below:
     Output Paragraph: 
-    <string of output paragraph>, around 20 sentences.
+    <string of output paragraph>, around 20 sentences. Writing in similar style of Input Paragraph and Input Related Paragraphs.
 
     Output Memory: 
     Rational: <string that explain how to update the memory>;
@@ -130,6 +131,14 @@ class RecurrentGPT:
             with open(response_file, 'a', encoding='utf-8') as f:
                 f.write(f"Writer's output here:\n{response}\n\n")
 
-        self.long_memory.append(self.input["output_paragraph"])
+        if self.auto:
+            # for auto-generation, append the input into long memory because current output need to be extended
+            self.long_memory.append(self.input["output_paragraph"])
+        elif self.output["output_paragraph"]:
+            # otherwise append current output into long memory
+            self.long_memory.append(self.output["output_paragraph"])
+            # and change output to next input
+            self.input["output_paragraph"] = self.output["output_paragraph"]
+
         self.memory_index = self.embedder.encode(
             self.long_memory, convert_to_tensor=True)

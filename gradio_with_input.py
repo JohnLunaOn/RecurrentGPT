@@ -99,16 +99,32 @@ def init(novel_input, request: gr.Request):
     
     _CACHE[cookie] = {"start_input_to_human": start_input_to_human,
                       "init_paragraphs": init_paragraphs}
-    written_paras = f"""Title: {init_paragraphs['Chapter name']}
+    cache = _CACHE[cookie]
+
+    all_paragraphs = '\n\n'.join([init_paragraphs['Paragraph 1'], init_paragraphs['Paragraph 2'], init_paragraphs['Paragraph 3']])
+    written_paras = f"""Chapter: {init_paragraphs['Chapter name']}
 
 Outline: {init_paragraphs['Outline']}
 
 Paragraphs:
 
-{start_input_to_human['input_paragraph']}"""
-    long_memory = parse_instructions([init_paragraphs['Paragraph 1'], init_paragraphs['Paragraph 2']])
+{all_paragraphs}"""
+    
+    long_memory_array = [init_paragraphs['Paragraph 1'], init_paragraphs['Paragraph 2'], init_paragraphs['Paragraph 3']]
+    long_memory = parse_instructions(long_memory_array)
+
+    # RecurrentGPT's input is always the last generated paragraph
+    writer_start_input = {
+            "output_paragraph": init_paragraphs['Paragraph 3'],
+            "output_instruction": None,
+    }
+
+    # Init GPT writer and cache
+    writer = RecurrentGPT(input=writer_start_input, short_memory=init_paragraphs['Summary'], long_memory=long_memory_array, memory_index=None, embedder=embedder, auto_generate=False)
+    cache["swriter"] = writer
+
     # short memory, long memory, current written paragraphs, 3 next instructions
-    return prompt, start_input_to_human['output_memory'], long_memory, written_paras, init_paragraphs['Instruction 1'], init_paragraphs['Instruction 2'], init_paragraphs['Instruction 3']
+    return prompt, init_paragraphs['Summary'], long_memory, written_paras, init_paragraphs['Instruction 1'], init_paragraphs['Instruction 2'], init_paragraphs['Instruction 3']
 
 def step(short_memory, long_memory, instruction1, instruction2, instruction3, current_paras, request: gr.Request, ):
     if current_paras == "":
@@ -162,35 +178,18 @@ def controled_step(short_memory, long_memory, selected_instruction, current_para
     cookie = request.headers['cookie'].split('; _gat_gtag')[0]
     cookie = hashlib.md5(cookie.encode('utf-8')).hexdigest()
     cache = _CACHE[cookie]
-    if "writer" not in cache:
-        start_input_to_human = cache["start_input_to_human"]
-        start_input_to_human['output_instruction'] = selected_instruction
-        init_paragraphs = cache["init_paragraphs"]
-        human = Human(input=start_input_to_human,
-                      memory=None, embedder=embedder)
-        human.step()
-        start_short_memory = init_paragraphs['Summary']
-        writer_start_input = human.output
-
-        # Init writerGPT
-        writer = RecurrentGPT(input=writer_start_input, short_memory=start_short_memory, long_memory=[
-            init_paragraphs['Paragraph 1'], init_paragraphs['Paragraph 2']], memory_index=None, embedder=embedder)
-        cache["writer"] = writer
-        cache["human"] = human
-        writer.step()
+    if "swriter" not in cache:
+        print("ERROR - swriter should exist")
+        return "", "", "", "", "", ""
     else:
-        human = cache["human"]
-        writer = cache["writer"]
-        output = writer.output
-        output['output_memory'] = short_memory
-        output['output_instruction'] = selected_instruction
-        human.input = output
-        human.step()
-        writer.input = human.output
+        writer:RecurrentGPT = cache["swriter"] 
+
+        writer.short_memory = short_memory
+        writer.input["output_instruction"] = selected_instruction
         writer.step()
 
     # short memory, long memory, current written paragraphs, 3 next instructions
-    return writer.output['output_memory'], parse_instructions(writer.long_memory), current_paras + '\n\n' + writer.output['input_paragraph'], *writer.output['output_instruction']
+    return writer.output['output_memory'], parse_instructions(writer.long_memory), current_paras + '\n\n' + writer.output["output_paragraph"], *writer.output['output_instruction']
 
 
 # SelectData is a subclass of EventData
@@ -221,13 +220,13 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
 
             with gr.Column():
                 written_paras = gr.Textbox(
-                    label="Written Paragraphs (editable)", max_lines=25, lines=25)
+                    label="Written Paragraphs (Generated)", max_lines=25, lines=25)
                 with gr.Box():
                     gr.Markdown("### Memory Module\n")
                     short_memory = gr.Textbox(
                         label="Short-Term Memory (editable)", max_lines=5, lines=5)
                     long_memory = gr.Textbox(
-                        label="Long-Term Memory (editable)", max_lines=6, lines=6)
+                        label="Long-Term Memory (Generated)", max_lines=6, lines=6)
                 with gr.Box():
                     gr.Markdown("### Instruction Module\n")
                     with gr.Row():
@@ -266,14 +265,14 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                     label="Init Prompts (Generated)", max_lines=30, lines=30)
             with gr.Column():
                 written_paras = gr.Textbox(
-                    label="Written Paragraphs (editable)", max_lines=25, lines=25)
+                    label="Written Paragraphs (Generated)", max_lines=25, lines=25)
 
                 with gr.Box():
                     gr.Markdown("### Memory Module\n")
                     short_memory = gr.Textbox(
                         label="Short-Term Memory (editable)", max_lines=5, lines=5)
                     long_memory = gr.Textbox(
-                        label="Long-Term Memory (editable)", max_lines=6, lines=6)
+                        label="Long-Term Memory (Generated)", max_lines=6, lines=6)
 
                 with gr.Box():
                     gr.Markdown("### Instruction Module\n")
