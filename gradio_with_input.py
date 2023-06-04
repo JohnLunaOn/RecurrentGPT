@@ -23,12 +23,13 @@ def parse_novel_input(novel_input):
         "background":"",
         "examples":[]
     }
-    novel_settings['name'] = get_content_between_a_b('<NOVEL_NAME>:','<NOVEL_TYPE>',novel_input)
-    novel_settings['type'] = get_content_between_a_b('<NOVEL_TYPE>:','<NOVEL_DESCRIPTION>',novel_input)
-    novel_settings['description'] = get_content_between_a_b('<NOVEL_DESCRIPTION>:','<NOVEL_BACKGROUND>',novel_input)
-    novel_settings['background'] = get_content_between_a_b('<NOVEL_BACKGROUND>:','<NOVEL_EXAMPLES>',novel_input)
-    exampleStr = get_content_between_a_b('<NOVEL_EXAMPLES>:','<END OF NOVEL DEFINITION>',novel_input)
+    novel_settings['name'] = get_content_between_a_b('<NOVEL_NAME>','<NOVEL_NAME_END>',novel_input)
+    novel_settings['type'] = get_content_between_a_b('<NOVEL_TYPE>','<NOVEL_TYPE_END>',novel_input)
+    novel_settings['description'] = get_content_between_a_b('<NOVEL_DESCRIPTION>','<NOVEL_DESCRIPTION_END>',novel_input)
+    novel_settings['background'] = get_content_between_a_b('<NOVEL_BACKGROUND>','<NOVEL_BACKGROUND_END>',novel_input)
+    exampleStr = get_content_between_a_b('<NOVEL_EXAMPLES>','<NOVEL_EXAMPLES_END>',novel_input)
     novel_settings['examples'] = [x.strip() for x in exampleStr.split('<START>') if x]
+    novel_settings['writing_style'] = get_content_between_a_b('<NOVEL_WRITING_STYLE>','<NOVEL_WRITING_STYLE_END>',novel_input)
 
     if novel_settings['description'] != "":
         novel_settings['description'] = "about " + novel_settings['description']
@@ -38,6 +39,8 @@ def parse_novel_input(novel_input):
 def init_prompt(novel_input):
     novel_settings = parse_novel_input(novel_input)
     novel_name = novel_settings['name']
+    default_writing_style = "Write in similar novelistic style of example paragraphs"
+    writing_style = novel_settings['writing_style'] if novel_settings['writing_style'] else default_writing_style
     promptStart = f"""
 Please write a {novel_settings['type']} novel {novel_settings['description']} with multiple chapters. 
 The name of the novel is: "{novel_name}".
@@ -50,13 +53,13 @@ The background and character set of the novel:
         exampleStr += "Example Paragraph " + str(i+1) + ":\n"
         exampleStr += example + "\n"
     promptExamples = f"""
-Please write in similar writing style of the following example paragraphs:
+The example paragraphs:
 {exampleStr}
 """
     promptEnd = f"""
 Follow the format below precisely:
 - Write a name of Chapter 1 and a concise outline for Chapter 1 based on the provided background, character set and the example paragraphs.
-- Write the first 3 paragraphs of the novel based on the example paragraphs and your outline. Write in novelistic style of example paragraphs and take your time to set the scene.
+- Write the first 3 paragraphs of the novel based on the example paragraphs and your outline. {writing_style}. Take your time to set the scene.
 - Write a summary that captures the key information of the 3 paragraphs.
 - Finally, write three different instructions for what to write next, each containing around five sentences. Each instruction should present a possible, interesting continuation of the story.
 The output format should follow these guidelines:
@@ -79,10 +82,17 @@ Make sure to be precise and follow the output format strictly.
 """
     return promptStart + promptExamples + promptEnd
 
-def init(novel_input, request: gr.Request):
+def get_cache(request: gr.Request):
     global _CACHE
     cookie = request.headers['cookie'].split('; _gat_gtag')[0]
     cookie = hashlib.md5(cookie.encode('utf-8')).hexdigest()
+    if cookie not in _CACHE:
+        _CACHE[cookie] = {}
+
+    return _CACHE[cookie]
+
+def init(novel_input, request: gr.Request):
+    cache = get_cache(request)
 
     prompt = init_prompt(novel_input)
     print(f"Init Prompt:\n {prompt}")
@@ -97,9 +107,8 @@ def init(novel_input, request: gr.Request):
         "output_instruction": [init_paragraphs['Instruction 1'], init_paragraphs['Instruction 2'], init_paragraphs['Instruction 3']]
     }
     
-    _CACHE[cookie] = {"start_input_to_human": start_input_to_human,
-                      "init_paragraphs": init_paragraphs}
-    cache = _CACHE[cookie]
+    cache['start_input_to_human'] = start_input_to_human
+    cache['init_paragraphs'] = init_paragraphs
 
     all_paragraphs = '\n\n'.join([init_paragraphs['Paragraph 1'], init_paragraphs['Paragraph 2'], init_paragraphs['Paragraph 3']])
     written_paras = f"""Chapter: {init_paragraphs['Chapter name']}
@@ -129,12 +138,7 @@ Paragraphs:
 def step(short_memory, long_memory, instruction1, instruction2, instruction3, current_paras, request: gr.Request, ):
     if current_paras == "":
         return "", "", "", "", "", ""
-    global _CACHE
-    # print(list(_CACHE.keys()))
-
-    cookie = request.headers['cookie'].split('; _gat_gtag')[0]
-    cookie = hashlib.md5(cookie.encode('utf-8')).hexdigest()
-    cache = _CACHE[cookie]
+    cache = get_cache(request)
 
     if "writer" not in cache:
         start_input_to_human = cache["start_input_to_human"]
@@ -173,11 +177,8 @@ def step(short_memory, long_memory, instruction1, instruction2, instruction3, cu
 def controled_step(short_memory, long_memory, selected_instruction, current_paras, request: gr.Request):
     if current_paras == "":
         return "", "", "", "", "", ""
-    global _CACHE
-    # print(list(_CACHE.keys()))
-    cookie = request.headers['cookie'].split('; _gat_gtag')[0]
-    cookie = hashlib.md5(cookie.encode('utf-8')).hexdigest()
-    cache = _CACHE[cookie]
+    cache = get_cache(request)
+    
     if "swriter" not in cache:
         print("ERROR - swriter should exist")
         return "", "", "", "", "", ""
