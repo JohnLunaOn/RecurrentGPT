@@ -23,6 +23,7 @@ class RecurrentGPT:
 
         input_paragraph = self.input["output_paragraph"]
         input_instruction = self.input["output_instruction"]
+        writing_style = self.input["writing_style"]
 
         instruction_embedding = self.embedder.encode(
             input_instruction, convert_to_tensor=True)
@@ -43,44 +44,37 @@ class RecurrentGPT:
             new_character_prompt = ""
 
         input_text = f"""I need you to help me write a novel. Now I give you a memory (a brief summary) of 400 words, you should use it to store the key content of what has been written so that you can keep track of very long context. For each time, I will give you your current memory (a brief summary of previous stories. You should use it to store the key content of what has been written so that you can keep track of very long context), the previously written paragraph, and instructions on what to write in the next paragraph. 
-    I need you to write:
-    1. Output Paragraph: the next paragraph of the novel in similar writing style of Input Paragraph and Input Related Paragraphs. The output paragraph should contain around 20 sentences and should follow the input instructions.
-    2. Output Memory: The updated memory. You should first explain which sentences in the input memory are no longer necessary and why, and then explain what needs to be added into the memory and why. After that you should write the updated memory. The updated memory should be similar to the input memory except the parts you previously thought that should be deleted or added. The updated memory should only store key information. The updated memory should never exceed 20 sentences!
-    3. Output Instruction:  instructions of what to write next (after what you have written). You should output 3 different instructions, each is a possible interesting continuation of the story. Each output instruction should contain around 5 sentences
-    Here are the inputs: 
+I need you to write:
+1. Output Paragraph: the next paragraph of the novel in similar writing style of Input Paragraph and Input Related Paragraphs. The output paragraph should contain around 20 sentences and should follow the input instructions.
+2. Output Memory: The updated memory. You should first explain which sentences in the input memory are no longer necessary and why, and then explain what needs to be added into the memory and why. After that you should write the updated memory. The updated memory should be similar to the input memory except the parts you previously thought that should be deleted or added. The updated memory should only store key information. The updated memory should never exceed 20 sentences!
+3. Output Instruction:  instructions of what to write next (after what you have written). You should output 3 different instructions, each is a possible interesting continuation of the story. Each output instruction should contain around 5 sentences
+Here are the inputs: 
+Input Memory:  
+{self.short_memory}
+Input Paragraph:
+{input_paragraph}
+Input Instruction:
+{input_instruction}
+Input Related Paragraphs:
+{input_long_term_memory}
 
-    Input Memory:  
-    {self.short_memory}
-
-    Input Paragraph:
-    {input_paragraph}
-
-    Input Instruction:
-    {input_instruction}
-
-    Input Related Paragraphs:
-    {input_long_term_memory}
-    
-    Now start writing, organize your output by strictly following the output format as below:
-    Output Paragraph: 
-    <string of output paragraph>, around 20 sentences. Writing in similar style of Input Paragraph and Input Related Paragraphs.
-
-    Output Memory: 
-    Rational: <string that explain how to update the memory>;
-    Updated Memory: <string of updated memory>, around 10 to 20 sentences
-
-    Output Instruction: 
-    Instruction 1: <content for instruction 1>, around 5 sentences
-    Instruction 2: <content for instruction 2>, around 5 sentences
-    Instruction 3: <content for instruction 3>, around 5 sentences
-
-    Very important!! The updated memory should only store key information. The updated memory should never contain over 500 words!
-    Finally, remember that you are writing a novel. Write like a novelist and do not move too fast when writing the output instructions for the next paragraph. Remember that the chapter will contain over 10 paragraphs and the novel will contain over 100 chapters. And this is just the begining. Just write some interesting staffs that will happen next. Also, think about what plot can be attractive for common readers when writing output instructions. 
-
-    Very Important: 
-    You should first explain which sentences in the input memory are no longer necessary and why, and then explain what needs to be added into the memory and why. After that, you start rewrite the input memory to get the updated memory. 
-    {new_character_prompt}
-    """
+Now start writing, organize your output by strictly following the output format as below:
+Output Paragraph: 
+<string of output paragraph>, around 20 sentences. {writing_style}
+Output Memory: 
+Rational: <string that explain how to update the memory>;
+Updated Memory: <string of updated memory>, around 10 to 20 sentences
+Output Instruction: 
+Instruction 1: <content for instruction 1>, around 5 sentences
+Instruction 2: <content for instruction 2>, around 5 sentences
+Instruction 3: <content for instruction 3>, around 5 sentences
+Very important:
+The updated memory should only store key information. The updated memory should never contain over 500 words!
+Finally, remember that you are writing a novel. Write like a novelist and do not move too fast when writing the output instructions for the next paragraph. Remember that the chapter will contain over 10 paragraphs and the novel will contain over 100 chapters. And this is just the begining. Just write some interesting staffs that will happen next. Also, think about what plot can be attractive for common readers when writing output instructions. 
+Very Important: 
+You should first explain which sentences in the input memory are no longer necessary and why, and then explain what needs to be added into the memory and why. After that, you start rewrite the input memory to get the updated memory. 
+{new_character_prompt}
+"""
         return input_text
 
     def parse_output(self, output):
@@ -140,5 +134,6 @@ class RecurrentGPT:
             # and change output to next input
             self.input["output_paragraph"] = self.output["output_paragraph"]
 
+        self.output["prompt"] = prompt
         self.memory_index = self.embedder.encode(
             self.long_memory, convert_to_tensor=True)

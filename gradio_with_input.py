@@ -36,11 +36,13 @@ def parse_novel_input(novel_input):
 
     return novel_settings
 
-def init_prompt(novel_input):
+def init_prompt(novel_input, cache):
     novel_settings = parse_novel_input(novel_input)
     novel_name = novel_settings['name']
     default_writing_style = "Write in similar novelistic style of example paragraphs"
     writing_style = novel_settings['writing_style'] if novel_settings['writing_style'] else default_writing_style
+    cache['writing_style'] = writing_style
+
     promptStart = f"""
 Please write a {novel_settings['type']} novel {novel_settings['description']} with multiple chapters. 
 The name of the novel is: "{novel_name}".
@@ -59,7 +61,7 @@ The example paragraphs:
     promptEnd = f"""
 Follow the format below precisely:
 - Write a name of Chapter 1 and a concise outline for Chapter 1 based on the provided background, character set and the example paragraphs.
-- Write the first 3 paragraphs of the novel based on the example paragraphs and your outline. {writing_style}. Take your time to set the scene.
+- Write the first 3 paragraphs of the novel based on the example paragraphs and your outline. {writing_style} Take your time to set the scene.
 - Write a summary that captures the key information of the 3 paragraphs.
 - Finally, write three different instructions for what to write next, each containing around five sentences. Each instruction should present a possible, interesting continuation of the story.
 The output format should follow these guidelines:
@@ -94,7 +96,7 @@ def get_cache(request: gr.Request):
 def init(novel_input, request: gr.Request):
     cache = get_cache(request)
 
-    prompt = init_prompt(novel_input)
+    prompt = init_prompt(novel_input, cache)
     print(f"Init Prompt:\n {prompt}")
 
     # prepare first init
@@ -124,8 +126,9 @@ Paragraphs:
 
     # RecurrentGPT's input is always the last generated paragraph
     writer_start_input = {
-            "output_paragraph": init_paragraphs['Paragraph 3'],
-            "output_instruction": None,
+        "output_paragraph": init_paragraphs['Paragraph 3'],
+        "output_instruction": None,
+        "writing_style": cache['writing_style']
     }
 
     # Init GPT writer and cache
@@ -171,14 +174,14 @@ def step(short_memory, long_memory, instruction1, instruction2, instruction3, cu
 
     long_memory = [[v] for v in writer.long_memory]
     # short memory, long memory, current written paragraphs, 3 next instructions
-    return writer.output['output_memory'], long_memory, current_paras + '\n\n' + writer.output['input_paragraph'], human.output['output_instruction'], *writer.output['output_instruction']
+    return writer.output['prompt'], writer.output['output_memory'], long_memory, current_paras + '\n\n' + writer.output['input_paragraph'], human.output['output_instruction'], *writer.output['output_instruction']
 
 
 def controled_step(short_memory, long_memory, selected_instruction, current_paras, request: gr.Request):
     if current_paras == "":
         return "", "", "", "", "", ""
     cache = get_cache(request)
-    
+
     if "swriter" not in cache:
         print("ERROR - swriter should exist")
         return "", "", "", "", "", ""
@@ -190,7 +193,7 @@ def controled_step(short_memory, long_memory, selected_instruction, current_para
         writer.step()
 
     # short memory, long memory, current written paragraphs, 3 next instructions
-    return writer.output['output_memory'], parse_instructions(writer.long_memory), current_paras + '\n\n' + writer.output["output_paragraph"], *writer.output['output_instruction']
+    return writer.output['prompt'], writer.output['output_memory'], parse_instructions(writer.long_memory), current_paras + '\n\n' + writer.output["output_paragraph"], *writer.output['output_instruction']
 
 
 # SelectData is a subclass of EventData
@@ -216,8 +219,8 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                 btn_init = gr.Button(
                     "Generate & Send Init Prompt", variant="primary")
                 
-                novel_init_prompt = gr.Textbox(
-                    label="Init Prompts (Generated)", max_lines=30, lines=30)
+                novel_current_prompt = gr.Textbox(
+                    label="Current Prompts (Generated)", max_lines=30, lines=30)
 
             with gr.Column():
                 written_paras = gr.Textbox(
@@ -247,9 +250,9 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                 btn_step = gr.Button("Next Step", variant="primary")
 
         btn_init.click(init, inputs=[novel_input], outputs=[
-            novel_init_prompt, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
+            novel_current_prompt, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
         btn_step.click(controled_step, inputs=[short_memory, long_memory, selected_instruction, written_paras], outputs=[
-            short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
+            novel_current_prompt, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
         selected_plan.select(on_select, inputs=[
                              instruction1, instruction2, instruction3], outputs=[selected_instruction])
 
@@ -262,8 +265,8 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                 btn_init = gr.Button(
                     "Generate & Send Init Prompt", variant="primary")
                 
-                novel_init_prompt = gr.Textbox(
-                    label="Init Prompts (Generated)", max_lines=30, lines=30)
+                novel_current_prompt = gr.Textbox(
+                    label="Current Prompts (Generated)", max_lines=30, lines=30)
             with gr.Column():
                 written_paras = gr.Textbox(
                     label="Written Paragraphs (Generated)", max_lines=25, lines=25)
@@ -290,9 +293,9 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                 btn_step = gr.Button("Next Step", variant="primary")
 
         btn_init.click(init, inputs=[novel_input], outputs=[
-            novel_init_prompt, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
+            novel_current_prompt, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
         btn_step.click(step, inputs=[short_memory, long_memory, instruction1, instruction2, instruction3, written_paras], outputs=[
-            short_memory, long_memory, written_paras, selected_plan, instruction1, instruction2, instruction3])
+            novel_current_prompt, short_memory, long_memory, written_paras, selected_plan, instruction1, instruction2, instruction3])
 
 
     demo.queue(concurrency_count=1)
