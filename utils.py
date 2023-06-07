@@ -12,7 +12,7 @@ def get_api_response(content: str, max_tokens=None):
             'role': 'user',
             'content': content,
         }],
-        temperature=0.7,  
+        temperature=1.0,  
         max_tokens=max_tokens
     )
     print("OpenAI ChatAPI Response:")

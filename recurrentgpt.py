@@ -24,6 +24,8 @@ class RecurrentGPT:
         input_paragraph = self.input["output_paragraph"]
         input_instruction = self.input["output_instruction"]
         writing_style = self.input["writing_style"]
+        start_prompt = self.input['novel_start_prompt']
+        chapter_name = self.input['chapter_name']
 
         instruction_embedding = self.embedder.encode(
             input_instruction, convert_to_tensor=True)
@@ -36,14 +38,16 @@ class RecurrentGPT:
         top_k_memory = [self.long_memory[idx] for idx in top_k_idx]
         # combine the top 3 paragraphs
         input_long_term_memory = '\n'.join(
-            [f"Related Paragraphs {i+1} :" + selected_memory for i, selected_memory in enumerate(top_k_memory)])
+            [f"Related Paragraphs {i+1} :\n" + selected_memory for i, selected_memory in enumerate(top_k_memory)])
         # randomly decide if a new character should be introduced
-        if random.random() < new_character_prob:
-            new_character_prompt = f"If it is reasonable, you can introduce a new character in the output paragrah and add it into the memory."
-        else:
-            new_character_prompt = ""
+        # if random.random() < new_character_prob:
+        #     new_character_prompt = f"If it is reasonable, you can introduce a new character in the output paragrah and add it into the memory."
+        # else:
+        #     new_character_prompt = ""
 
-        input_text = f"""I need you to help me write a novel. Now I give you a memory (a brief summary) of 400 words, you should use it to store the key content of what has been written so that you can keep track of very long context. For each time, I will give you your current memory (a brief summary of previous stories. You should use it to store the key content of what has been written so that you can keep track of very long context), the previously written paragraph, and instructions on what to write in the next paragraph. 
+        input_text = f"""{start_prompt}
+Current chapter is: {chapter_name}.
+Now I give you a memory (a brief summary) of 400 words, you should use it to store the key content of what has been written so that you can keep track of very long context. For each time, I will give you your current memory (a brief summary of previous stories. You should use it to store the key content of what has been written so that you can keep track of very long context), the previously written paragraph, and instructions on what to write in the next paragraph. 
 I need you to write:
 1. Output Paragraph: the next paragraph of the novel in similar writing style of Input Paragraph and Input Related Paragraphs. The output paragraph should contain around 20 sentences and should follow the input instructions.
 2. Output Memory: The updated memory. You should first explain which sentences in the input memory are no longer necessary and why, and then explain what needs to be added into the memory and why. After that you should write the updated memory. The updated memory should be similar to the input memory except the parts you previously thought that should be deleted or added. The updated memory should only store key information. The updated memory should never exceed 20 sentences!
@@ -73,7 +77,6 @@ The updated memory should only store key information. The updated memory should 
 Finally, remember that you are writing a novel. Write like a novelist and do not move too fast when writing the output instructions for the next paragraph. Remember that the chapter will contain over 10 paragraphs and the novel will contain over 100 chapters. And this is just the begining. Just write some interesting staffs that will happen next. Also, think about what plot can be attractive for common readers when writing output instructions. 
 Very Important: 
 You should first explain which sentences in the input memory are no longer necessary and why, and then explain what needs to be added into the memory and why. After that, you start rewrite the input memory to get the updated memory. 
-{new_character_prompt}
 """
         return input_text
 

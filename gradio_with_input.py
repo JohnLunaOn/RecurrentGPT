@@ -23,31 +23,33 @@ def parse_novel_input(novel_input):
         "background":"",
         "examples":[]
     }
+    novel_settings['prompt']= get_content_between_a_b('<NOVEL_PROMPT>','<NOVEL_PROMPT_END>',novel_input)
     novel_settings['name'] = get_content_between_a_b('<NOVEL_NAME>','<NOVEL_NAME_END>',novel_input)
-    novel_settings['type'] = get_content_between_a_b('<NOVEL_TYPE>','<NOVEL_TYPE_END>',novel_input)
     novel_settings['description'] = get_content_between_a_b('<NOVEL_DESCRIPTION>','<NOVEL_DESCRIPTION_END>',novel_input)
     novel_settings['background'] = get_content_between_a_b('<NOVEL_BACKGROUND>','<NOVEL_BACKGROUND_END>',novel_input)
+    novel_settings['characters'] = get_content_between_a_b('<NOVEL_CHARACTERS>','<NOVEL_CHARACTERS_END>',novel_input)
+
     exampleStr = get_content_between_a_b('<NOVEL_EXAMPLES>','<NOVEL_EXAMPLES_END>',novel_input)
     novel_settings['examples'] = [x.strip() for x in exampleStr.split('<START>') if x]
     novel_settings['writing_style'] = get_content_between_a_b('<NOVEL_WRITING_STYLE>','<NOVEL_WRITING_STYLE_END>',novel_input)
-
-    if novel_settings['description'] != "":
-        novel_settings['description'] = "about " + novel_settings['description']
 
     return novel_settings
 
 def init_prompt(novel_input, cache):
     novel_settings = parse_novel_input(novel_input)
-    novel_name = novel_settings['name']
+
     default_writing_style = "Write in similar novelistic style of example paragraphs"
     writing_style = novel_settings['writing_style'] if novel_settings['writing_style'] else default_writing_style
     cache['writing_style'] = writing_style
+    cache['novel_settings'] = novel_settings
 
-    promptStart = f"""
-Please write a {novel_settings['type']} novel {novel_settings['description']} with multiple chapters. 
-The name of the novel is: "{novel_name}".
-The background and character set of the novel:
+    promptStart = f"""{novel_settings['prompt']}
+The story, aka the novel has multiple chapters. It's {novel_settings['description']}. 
+The name of the novel is: "{novel_settings['name']}".
+The background of the novel:
 {novel_settings['background']}
+The characters of the novel:
+{novel_settings['characters']}
 
 """
     exampleStr = ""
@@ -58,6 +60,8 @@ The background and character set of the novel:
 The example paragraphs:
 {exampleStr}
 """
+    cache['novel_start_prompt'] = promptStart
+
     promptEnd = f"""
 Follow the format below precisely:
 - Write a name of Chapter 1 and a concise outline for Chapter 1 based on the provided background, character set and the example paragraphs.
@@ -128,7 +132,9 @@ Paragraphs:
     writer_start_input = {
         "output_paragraph": init_paragraphs['Paragraph 3'],
         "output_instruction": None,
-        "writing_style": cache['writing_style']
+        "writing_style": cache['writing_style'],
+        "novel_start_prompt": cache['novel_start_prompt'],
+        "chapter_name": init_paragraphs['Chapter name']
     }
 
     # Init GPT writer and cache
