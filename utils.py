@@ -34,19 +34,19 @@ def get_chapter_init(prompt):
     paragraphs = {
         "Chapter name":"",
         "Outline":"",
-        "Paragraph 1":"",
-        "Paragraph 2":"",
-        "Paragraph 3":"",
+        "Section 1":"",
+        "Section 2":"",
+        "Section 3":"",
         "Summary": "",
         "Instruction 1":"",
         "Instruction 2":"", 
         "Instruction 3":""    
     }
     paragraphs['Chapter name'] = get_content_between_a_b('Chapter 1:','Outline',response)
-    paragraphs['Outline'] = get_content_between_a_b('Outline:','Paragraph',response)
-    paragraphs['Paragraph 1'] = get_content_between_a_b('Paragraph 1:','Paragraph 2:',response)
-    paragraphs['Paragraph 2'] = get_content_between_a_b('Paragraph 2:','Paragraph 3:',response)
-    paragraphs['Paragraph 3'] = get_content_between_a_b('Paragraph 3:','Summary',response)
+    paragraphs['Outline'] = get_content_between_a_b('Outline:','Section',response)
+    paragraphs['Section 1'] = get_content_between_a_b('Section 1:','Section 2:',response)
+    paragraphs['Section 2'] = get_content_between_a_b('Section 2:','Section 3:',response)
+    paragraphs['Section 3'] = get_content_between_a_b('Section 3:','Summary',response)
     paragraphs['Summary'] = get_content_between_a_b('Summary:','Instruction 1',response)
     paragraphs['Instruction 1'] = get_content_between_a_b('Instruction 1:','Instruction 2',response)
     paragraphs['Instruction 2'] = get_content_between_a_b('Instruction 2:','Instruction 3',response)
@@ -78,9 +78,9 @@ def get_init(init_text=None,text=None,response_file=None):
     paragraphs = {
         "name":"",
         "Outline":"",
-        "Paragraph 1":"",
-        "Paragraph 2":"",
-        "Paragraph 3":"",
+        "Section 1":"",
+        "Section 2":"",
+        "Section 3":"",
         "Summary": "",
         "Instruction 1":"",
         "Instruction 2":"", 
@@ -88,9 +88,9 @@ def get_init(init_text=None,text=None,response_file=None):
     }
     paragraphs['name'] = get_content_between_a_b('Name:','Outline',response)
     
-    paragraphs['Paragraph 1'] = get_content_between_a_b('Paragraph 1:','Paragraph 2:',response)
-    paragraphs['Paragraph 2'] = get_content_between_a_b('Paragraph 2:','Paragraph 3:',response)
-    paragraphs['Paragraph 3'] = get_content_between_a_b('Paragraph 3:','Summary',response)
+    paragraphs['Section 1'] = get_content_between_a_b('Section 1:','Section 2:',response)
+    paragraphs['Section 2'] = get_content_between_a_b('Section 2:','Section 3:',response)
+    paragraphs['Section 3'] = get_content_between_a_b('Section 3:','Summary',response)
     paragraphs['Summary'] = get_content_between_a_b('Summary:','Instruction 1',response)
     paragraphs['Instruction 1'] = get_content_between_a_b('Instruction 1:','Instruction 2',response)
     paragraphs['Instruction 2'] = get_content_between_a_b('Instruction 2:','Instruction 3',response)
@@ -106,7 +106,7 @@ def get_init(init_text=None,text=None,response_file=None):
             paragraphs['Outline'] = get_content_between_a_b('Outline:','Chapter',response)
             break
     if paragraphs['Outline'] == '':
-        paragraphs['Outline'] = get_content_between_a_b('Outline:','Paragraph',response)
+        paragraphs['Outline'] = get_content_between_a_b('Outline:','Section',response)
 
 
     return paragraphs

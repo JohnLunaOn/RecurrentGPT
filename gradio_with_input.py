@@ -38,7 +38,7 @@ def parse_novel_input(novel_input):
 def init_prompt(novel_input, cache):
     novel_settings = parse_novel_input(novel_input)
 
-    default_writing_style = "Write in similar novelistic style of example paragraphs"
+    default_writing_style = "Write in similar novelistic style of example sections"
     writing_style = novel_settings['writing_style'] if novel_settings['writing_style'] else default_writing_style
     cache['writing_style'] = writing_style
     cache['novel_settings'] = novel_settings
@@ -54,35 +54,35 @@ The characters of the novel:
 """
     exampleStr = ""
     for i, example in enumerate(novel_settings['examples']):
-        exampleStr += "Example Paragraph " + str(i+1) + ":\n"
+        exampleStr += "Example Section " + str(i+1) + ":\n"
         exampleStr += example + "\n"
     promptExamples = f"""
-The example paragraphs:
+The example sections:
 {exampleStr}
 """
     cache['novel_start_prompt'] = promptStart
 
     promptEnd = f"""
 Follow the format below precisely:
-- Write a name of Chapter 1 and a concise outline for Chapter 1 based on the provided background, character set and the example paragraphs.
-- Write the first 3 paragraphs of the novel based on the example paragraphs and your outline. {writing_style} Take your time to set the scene.
-- Write a summary that captures the key information of the 3 paragraphs.
+- Take Example Section 1 as the beginning of the novel, write a name of Chapter 1 and a concise outline for Chapter 1 based on the provided background, character set and the example sections.
+- Copy Example Section 1 exactly as Section 1, then write the next 2 sections based on your outline, make sure to slowly advance the plot. {writing_style}
+- Write a summary that captures the key information of the 3 sections.
 - Finally, write three different instructions for what to write next, each containing around five sentences. Each instruction should present a possible, interesting continuation of the story.
 The output format should follow these guidelines:
 Chapter 1: <name of Chapter 1>
 Outline:
 <content of outline for Chapter 1>
-Paragraph 1:
-<content for paragraph 1>
-Paragraph 2:
-<content for paragraph 2>
-Paragraph 3:
-<content for paragraph 3>
+Section 1:
+<content for section 1>
+Section 2:
+<content for section 2>
+Section 3:
+<content for section 3>
 Summary:
 <content of summary>
-Instruction 1: <content for instruction 1>, be concise but interesting.
-Instruction 2: <content for instruction 2>, be concise but interesting.
-Instruction 3: <content for instruction 3>, be concise but interesting.
+Instruction 1: <content for instruction 1>, be concise, interesting and slowly advance the plot.
+Instruction 2: <content for instruction 2>, be concise, interesting and slowly advance the plot.
+Instruction 3: <content for instruction 3>, be concise, interesting and slowly advance the plot.
 
 Make sure to be precise and follow the output format strictly.
 """
@@ -107,8 +107,8 @@ def init(novel_input, request: gr.Request):
     init_paragraphs = get_chapter_init(prompt)
     # print(init_paragraphs)
     start_input_to_human = {
-        'output_paragraph': init_paragraphs['Paragraph 3'],
-        'input_paragraph': '\n\n'.join([init_paragraphs['Paragraph 1'], init_paragraphs['Paragraph 2']]),
+        'output_paragraph': init_paragraphs['Section 3'],
+        'input_paragraph': '\n\n'.join([init_paragraphs['Section 1'], init_paragraphs['Section 2']]),
         'output_memory': init_paragraphs['Summary'],
         "output_instruction": [init_paragraphs['Instruction 1'], init_paragraphs['Instruction 2'], init_paragraphs['Instruction 3']]
     }
@@ -116,21 +116,21 @@ def init(novel_input, request: gr.Request):
     cache['start_input_to_human'] = start_input_to_human
     cache['init_paragraphs'] = init_paragraphs
 
-    all_paragraphs = '\n\n'.join([init_paragraphs['Paragraph 1'], init_paragraphs['Paragraph 2'], init_paragraphs['Paragraph 3']])
+    all_paragraphs = '\n\n'.join([init_paragraphs['Section 1'], init_paragraphs['Section 2'], init_paragraphs['Section 3']])
     written_paras = f"""Chapter: {init_paragraphs['Chapter name']}
 
 Outline: {init_paragraphs['Outline']}
 
-Paragraphs:
+Sections:
 
 {all_paragraphs}"""
     
-    long_memory_array = [init_paragraphs['Paragraph 1'], init_paragraphs['Paragraph 2'], init_paragraphs['Paragraph 3']]
+    long_memory_array = [init_paragraphs['Section 1'], init_paragraphs['Section 2'], init_paragraphs['Section 3']]
     long_memory = parse_instructions(long_memory_array)
 
     # RecurrentGPT's input is always the last generated paragraph
     writer_start_input = {
-        "output_paragraph": init_paragraphs['Paragraph 3'],
+        "output_paragraph": init_paragraphs['Section 3'],
         "output_instruction": None,
         "writing_style": cache['writing_style'],
         "novel_start_prompt": cache['novel_start_prompt'],
@@ -162,7 +162,7 @@ def step(short_memory, long_memory, instruction1, instruction2, instruction3, cu
 
         # Init writerGPT
         writer = RecurrentGPT(input=writer_start_input, short_memory=start_short_memory, long_memory=[
-            init_paragraphs['Paragraph 1'], init_paragraphs['Paragraph 2']], memory_index=None, embedder=embedder)
+            init_paragraphs['Section 1'], init_paragraphs['Section 2']], memory_index=None, embedder=embedder)
         cache["writer"] = writer
         cache["human"] = human
         writer.step()
@@ -230,7 +230,7 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
 
             with gr.Column():
                 written_paras = gr.Textbox(
-                    label="Written Paragraphs (Generated)", max_lines=25, lines=25)
+                    label="Written Sections (Generated)", max_lines=25, lines=25)
                 with gr.Box():
                     gr.Markdown("### Memory Module\n")
                     short_memory = gr.Textbox(
@@ -275,7 +275,7 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                     label="Current Prompts (Generated)", max_lines=30, lines=30)
             with gr.Column():
                 written_paras = gr.Textbox(
-                    label="Written Paragraphs (Generated)", max_lines=25, lines=25)
+                    label="Written Sections (Generated)", max_lines=25, lines=25)
 
                 with gr.Box():
                     gr.Markdown("### Memory Module\n")
