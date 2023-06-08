@@ -1,30 +1,42 @@
 import re
 import openai
 
-def get_api_response(content: str, max_tokens=None):
+def get_api_response(content:str, temperature:float=1.0, system:str=None, max_tokens=None):
+    try:
+        system_prompt = system if system else 'You are a helpful and creative assistant for writing novel.'
+        messages = [
+            {
+                'role': 'system',
+                'content': system_prompt
+            }, 
+            {
+                'role': 'user',
+                'content': content,
+            }
+            ]
+        print("OpenAI Request Params:")
+        print(f"Temperature: {temperature}")
+        print(f"Max tokens: {max_tokens}")
+        print(f"Messages:\n {messages}")
 
-    response = openai.ChatCompletion.create(
-        model='gpt-3.5-turbo',
-        messages=[{
-            'role': 'system',
-            'content': 'You are a helpful and creative assistant for writing novel.'
-        }, {
-            'role': 'user',
-            'content': content,
-        }],
-        temperature=1.0,  
-        max_tokens=max_tokens
-    )
-    print("OpenAI ChatAPI Response:")
-    print(response)
-    return response['choices'][0]['message']['content']
+        response = openai.ChatCompletion.create(
+            model='gpt-3.5-turbo',
+            messages=messages,
+            temperature=temperature,  
+            max_tokens=max_tokens
+        )
+        print("OpenAI Response:")
+        print(response)
+        return response['choices'][0]['message']['content']
+    except:
+        return None
 
 def get_content_between_a_b(a,b,text):
     return re.search(f"{a}(.*?)\n{b}", text, re.DOTALL).group(1).strip()
 
-def get_chapter_init(prompt):
+def get_chapter_init(prompt, temperature, system=None):
     if prompt:
-        response = get_api_response(prompt)
+        response = get_api_response(content=prompt, temperature=temperature, system=system)
         print(response)
 
     else:

@@ -7,6 +7,7 @@ from utils import get_chapter_init, parse_instructions, get_content_between_a_b
 import hashlib
 
 _CACHE = {}
+_CACHE['openai_temperature'] = 1.0
 
 # Build the semantic search model
 embedder = SentenceTransformer('multi-qa-mpnet-base-cos-v1')
@@ -101,13 +102,16 @@ def get_cache(request: gr.Request):
     return _CACHE[cookie]
 
 def init(novel_input, request: gr.Request):
+    global _CACHE
+    print(f"Temperature init: {_CACHE['openai_temperature']}")
+
     cache = get_cache(request)
 
     prompt = init_prompt(novel_input, cache)
     print(f"Init Prompt:\n {prompt}")
 
     # prepare first init
-    init_paragraphs = get_chapter_init(prompt)
+    init_paragraphs = get_chapter_init(prompt=prompt, temperature=_CACHE['openai_temperature'])
     # print(init_paragraphs)
     start_input_to_human = {
         'output_paragraph': init_paragraphs['Section 3'],
@@ -148,6 +152,7 @@ Sections:
     return prompt, init_paragraphs['Summary'], long_memory, written_paras, init_paragraphs['Instruction 1'], init_paragraphs['Instruction 2'], init_paragraphs['Instruction 3']
 
 def step(short_memory, long_memory, instruction1, instruction2, instruction3, current_paras, request: gr.Request, ):
+    global _CACHE
     if current_paras == "":
         return "", "", "", "", "", ""
     cache = get_cache(request)
@@ -168,7 +173,7 @@ def step(short_memory, long_memory, instruction1, instruction2, instruction3, cu
             init_paragraphs['Section 1'], init_paragraphs['Section 2']], memory_index=None, embedder=embedder)
         cache["writer"] = writer
         cache["human"] = human
-        writer.step()
+        writer.step(temperature=_CACHE['openai_temperature'])
     else:
         human = cache["human"]
         writer = cache["writer"]
@@ -179,7 +184,7 @@ def step(short_memory, long_memory, instruction1, instruction2, instruction3, cu
         human.input = output
         human.step()
         writer.input = human.output
-        writer.step()
+        writer.step(temperature=_CACHE['openai_temperature'])
 
     long_memory = [[v] for v in writer.long_memory]
     # short memory, long memory, current written paragraphs, 3 next instructions
@@ -187,6 +192,7 @@ def step(short_memory, long_memory, instruction1, instruction2, instruction3, cu
 
 
 def controled_step(short_memory, long_memory, selected_instruction, current_paras, request: gr.Request):
+    global _CACHE
     if current_paras == "":
         return "", "", "", "", "", ""
     cache = get_cache(request)
@@ -199,7 +205,7 @@ def controled_step(short_memory, long_memory, selected_instruction, current_para
 
         writer.short_memory = short_memory
         writer.input["output_instruction"] = selected_instruction
-        writer.step()
+        writer.step(temperature=_CACHE['openai_temperature'])
 
     # short memory, long memory, current written paragraphs, 3 next instructions
     return writer.output['prompt'], writer.output['output_memory'], parse_instructions(writer.long_memory), current_paras + '\n\n' + writer.output["output_paragraph"], *writer.output['output_instruction']
@@ -211,6 +217,10 @@ def on_select(instruction1, instruction2, instruction3, evt: gr.SelectData):
     selected_plan = [instruction1, instruction2, instruction3][selected_plan-1]
     return selected_plan
 
+def update_temperature(val):
+    _CACHE['openai_temperature'] = val
+    print(f"Temperature changed to {_CACHE['openai_temperature']}")
+
 
 with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="default") as demo:
     gr.Markdown(
@@ -218,6 +228,9 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
     # RecurrentGPT
     Interactive Generation of (Arbitrarily) Long Texts with Human-in-the-Loop
     """)
+
+    openai_temperature = gr.Slider(label="OpenAI Temperature", minimum=0.0, maximum=2.0, value=_CACHE['openai_temperature'], step=0.1, interactive=True)
+    openai_temperature.change(fn=update_temperature, inputs=openai_temperature)
 
     with gr.Tab("Human-in-the-Loop"):
         with gr.Row():
@@ -230,7 +243,7 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                 
                 novel_current_prompt = gr.Textbox(
                     label="Current Prompts (Generated)", max_lines=30, lines=30)
-
+                
             with gr.Column():
                 written_paras = gr.Textbox(
                     label="Written Sections (Generated)", max_lines=25, lines=25)
@@ -305,7 +318,6 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
             novel_current_prompt, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
         btn_step.click(step, inputs=[short_memory, long_memory, instruction1, instruction2, instruction3, written_paras], outputs=[
             novel_current_prompt, short_memory, long_memory, written_paras, selected_plan, instruction1, instruction2, instruction3])
-
 
     demo.queue(concurrency_count=1)
 

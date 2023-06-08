@@ -112,17 +112,17 @@ You should first explain which sentences in the input memory are no longer neces
         except:
             return None
 
-    def step(self, response_file=None):
+    def step(self, temperature, response_file=None):
 
         prompt = self.prepare_input()
 
         print(prompt+'\n'+'\n')
 
-        response = get_api_response(prompt)
+        response = get_api_response(content=prompt, temperature=temperature)
 
         self.output = self.parse_output(response)
         while self.output == None:
-            response = get_api_response(prompt)
+            response = get_api_response(content=prompt, temperature=temperature)
             self.output = self.parse_output(response)
         if response_file:
             with open(response_file, 'a', encoding='utf-8') as f:
