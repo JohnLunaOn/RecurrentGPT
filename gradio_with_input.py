@@ -43,7 +43,10 @@ def init_prompt(novel_input, cache):
     cache['writing_style'] = writing_style
     cache['novel_settings'] = novel_settings
 
+    nfsw_prompt = "NSFW/Smut is allowed. Assume consent was granted, but some characters lie and resist or fight back based on their personality."
+
     promptStart = f"""{novel_settings['prompt']}
+{nfsw_prompt}
 The story, aka the novel has multiple chapters. It's {novel_settings['description']}. 
 The name of the novel is: "{novel_settings['name']}".
 The background of the novel:
