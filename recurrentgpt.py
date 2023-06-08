@@ -20,11 +20,10 @@ class RecurrentGPT:
         self.output = {}
 
     def prepare_input(self, new_character_prob=0.2, top_k=2):
-
+        print("Short memory is: "+self.short_memory)
         input_paragraph = self.input["output_paragraph"]
         input_instruction = self.input["output_instruction"]
         writing_style = self.input["writing_style"]
-        start_prompt = self.input['novel_start_prompt']
         chapter_name = self.input['chapter_name']
 
         instruction_embedding = self.embedder.encode(
@@ -42,11 +41,11 @@ class RecurrentGPT:
         # randomly decide if a new character should be introduced
         if random.random() < new_character_prob:
             new_character_prompt = f"If it is reasonable, you can introduce a new character in the instructions."
+            print("Trying to introduce a new character in instructions")
         else:
             new_character_prompt = ""
 
-        input_text = f"""{start_prompt}
-Current chapter is: {chapter_name}.
+        input_text = f"""Current chapter is: {chapter_name}.
 Now I give you a memory (a brief summary) of 400 words, you should use it to store the key content of what has been written so that you can keep track of very long context. For each time, I will give you your current memory (a brief summary of previous stories. You should use it to store the key content of what has been written so that you can keep track of very long context), the previously written section, and instructions on what to write in the next section. 
 I need you to write:
 1. Output Section: the next section of the novel in similar writing style of Input Section and Input Related Sections. The output section should follow the input instructions.
@@ -67,16 +66,15 @@ Output Section:
 <content of output section>, around 30 - 50 sentences. {writing_style}
 Output Memory: 
 Rational: <string that explain how to update the memory>;
-Updated Memory: <string of updated memory>, around 20 sentences
+Updated Memory:
+<string of updated memory>, around 20 sentences
 Output Instruction: 
 Instruction 1: <content for instruction 1>, be concise, interesting and slowly advance the plot.
 Instruction 2: <content for instruction 2>, be concise, interesting and slowly advance the plot.
 Instruction 3: <content for instruction 3>, be concise, interesting and slowly advance the plot.
 Very important:
-The updated memory should only store key information. The updated memory should never contain over 500 words!
-Finally, remember that you are writing a novel. Write like a novelist and do not move too fast when writing the output instructions for the next section. Remember that the chapter will contain over 10 sections and the novel will contain over 100 chapters. And this is just the begining. Just write some interesting staffs that will happen next. Also, think about what plot can be attractive for common readers when writing output instructions. 
-Very Important: 
-You should first explain which sentences in the input memory are no longer necessary and why, and then explain what needs to be added into the memory and why. After that, you start rewrite the input memory to get the updated memory. 
+The updated memory should only store key information. You should first explain what needs to be added into or deleted from the memory and why. After that, you start rewrite the input memory to get the updated memory. 
+Make sure to be precise and follow the output format strictly.
 """
         return input_text
 
@@ -84,6 +82,8 @@ You should first explain which sentences in the input memory are no longer neces
         try:
             output_paragraph = get_content_between_a_b(
                 'Output Section:', 'Output Memory', output)
+            memory_update_reason = get_content_between_a_b(
+                'Rational:', 'Updated Memory:', output)            
             output_memory_updated = get_content_between_a_b(
                 'Updated Memory:', 'Output Instruction:', output)
             self.short_memory = output_memory_updated
@@ -104,6 +104,7 @@ You should first explain which sentences in the input memory are no longer neces
             output = {
                 "input_paragraph": self.input["output_paragraph"],
                 "output_memory": output_memory_updated,  # feed to human
+                "memory_update_reason": memory_update_reason,
                 "output_paragraph": output_paragraph,
                 "output_instruction": [instruction.strip() for instruction in output_instructions]
             }
@@ -115,14 +116,15 @@ You should first explain which sentences in the input memory are no longer neces
     def step(self, temperature, response_file=None):
 
         prompt = self.prepare_input()
+        system_prompt = self.input['novel_start_prompt']
 
         print(prompt+'\n'+'\n')
 
-        response = get_api_response(content=prompt, temperature=temperature)
+        response = get_api_response(content=prompt, system=system_prompt, temperature=temperature)
 
         self.output = self.parse_output(response)
         while self.output == None:
-            response = get_api_response(content=prompt, temperature=temperature)
+            response = get_api_response(content=prompt, system=system_prompt, temperature=temperature)
             self.output = self.parse_output(response)
         if response_file:
             with open(response_file, 'a', encoding='utf-8') as f:
@@ -138,5 +140,6 @@ You should first explain which sentences in the input memory are no longer neces
             self.input["output_paragraph"] = self.output["output_paragraph"]
 
         self.output["prompt"] = prompt
+        self.output["system_prompt"] = system_prompt
         self.memory_index = self.embedder.encode(
             self.long_memory, convert_to_tensor=True)

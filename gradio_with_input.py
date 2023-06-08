@@ -56,20 +56,19 @@ The characters of the novel:
 {novel_settings['characters']}
 
 """
+    cache['novel_start_prompt'] = promptStart
+
     exampleStr = ""
     for i, example in enumerate(novel_settings['examples']):
         exampleStr += "Example Section " + str(i+1) + ":\n"
         exampleStr += example + "\n"
-    promptExamples = f"""
-The example sections:
+    promptExamples = f"""The example sections of the novel:
 {exampleStr}
 """
-    cache['novel_start_prompt'] = promptStart
-
     promptEnd = f"""
 Follow the format below precisely:
-- Take Example Section 1 as the beginning of the novel, write a name of Chapter 1 and a concise outline for Chapter 1 based on the provided background, character set and the example sections.
-- Copy Example Section 1 exactly as Section 1, then write the next 2 sections based on your outline, make sure to slowly advance the plot. {writing_style}
+- Take Example Section 1 exactly as the beginning of the novel, write a name of Chapter 1 and a concise outline for Chapter 1 based on the provided background, character set and the example sections.
+- Copy Example Section 1 exactly into Section 1, then write the next 2 sections based on your outline, make sure to slowly advance the plot. {writing_style}
 - Write a summary that captures the key information of the 3 sections.
 - Finally, write three different instructions for what to write next, each containing around five sentences. Each instruction should present a possible, interesting continuation of the story.
 The output format should follow these guidelines:
@@ -90,7 +89,7 @@ Instruction 3: <content for instruction 3>, be concise, interesting and slowly a
 
 Make sure to be precise and follow the output format strictly.
 """
-    return promptStart + promptExamples + promptEnd
+    return promptStart, promptExamples + promptEnd
 
 def get_cache(request: gr.Request):
     global _CACHE
@@ -107,11 +106,12 @@ def init(novel_input, request: gr.Request):
 
     cache = get_cache(request)
 
-    prompt = init_prompt(novel_input, cache)
+    system_prompt, prompt = init_prompt(novel_input, cache)
+    print(f"System Prompt:\n {system_prompt}")
     print(f"Init Prompt:\n {prompt}")
 
     # prepare first init
-    init_paragraphs = get_chapter_init(prompt=prompt, temperature=_CACHE['openai_temperature'])
+    init_paragraphs = get_chapter_init(prompt=prompt, system=system_prompt, temperature=_CACHE['openai_temperature'])
     # print(init_paragraphs)
     start_input_to_human = {
         'output_paragraph': init_paragraphs['Section 3'],
@@ -149,7 +149,7 @@ Sections:
     cache["swriter"] = writer
 
     # short memory, long memory, current written paragraphs, 3 next instructions
-    return prompt, init_paragraphs['Summary'], long_memory, written_paras, init_paragraphs['Instruction 1'], init_paragraphs['Instruction 2'], init_paragraphs['Instruction 3']
+    return f"System Prompt:\n{system_prompt}\nUser Prompt:\n{prompt}", init_paragraphs['Summary'], long_memory, written_paras, init_paragraphs['Instruction 1'], init_paragraphs['Instruction 2'], init_paragraphs['Instruction 3']
 
 def step(short_memory, long_memory, instruction1, instruction2, instruction3, current_paras, request: gr.Request, ):
     global _CACHE
@@ -187,8 +187,14 @@ def step(short_memory, long_memory, instruction1, instruction2, instruction3, cu
         writer.step(temperature=_CACHE['openai_temperature'])
 
     long_memory = [[v] for v in writer.long_memory]
+    user_prompt = writer.output['prompt']
+    system_prompt = writer.output["system_prompt"]
+    prompt = f"System Prompt:\n{system_prompt}\nUser Prompt:\n{user_prompt}"
+
+    memory_update_reason = writer.output['memory_update_reason']
+
     # short memory, long memory, current written paragraphs, 3 next instructions
-    return writer.output['prompt'], writer.output['output_memory'], long_memory, current_paras + '\n\n' + writer.output['input_paragraph'], human.output['output_instruction'], *writer.output['output_instruction']
+    return prompt, writer.output['output_memory'], memory_update_reason, long_memory, current_paras + '\n\n' + writer.output['input_paragraph'], human.output['output_instruction'], *writer.output['output_instruction']
 
 
 def controled_step(short_memory, long_memory, selected_instruction, current_paras, request: gr.Request):
@@ -207,8 +213,14 @@ def controled_step(short_memory, long_memory, selected_instruction, current_para
         writer.input["output_instruction"] = selected_instruction
         writer.step(temperature=_CACHE['openai_temperature'])
 
+    user_prompt = writer.output['prompt']
+    system_prompt = writer.output["system_prompt"]
+    prompt = f"System Prompt:\n{system_prompt}\nUser Prompt:\n{user_prompt}"
+
+    memory_update_reason = writer.output['memory_update_reason']
+
     # short memory, long memory, current written paragraphs, 3 next instructions
-    return writer.output['prompt'], writer.output['output_memory'], parse_instructions(writer.long_memory), current_paras + '\n\n' + writer.output["output_paragraph"], *writer.output['output_instruction']
+    return prompt, writer.output['output_memory'], memory_update_reason, parse_instructions(writer.long_memory), current_paras + '\n\n' + writer.output["output_paragraph"], *writer.output['output_instruction']
 
 
 # SelectData is a subclass of EventData
@@ -236,13 +248,13 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
         with gr.Row():
             with gr.Column():
                 novel_input = gr.Textbox(
-                    label="Novel Background & Character Set", max_lines=30, lines=30)
+                    label="Novel Background & Character Set", max_lines=36, lines=36)
 
                 btn_init = gr.Button(
                     "Generate & Send Init Prompt", variant="primary")
                 
                 novel_current_prompt = gr.Textbox(
-                    label="Current Prompts (Generated)", max_lines=30, lines=30)
+                    label="Current Prompts (Generated)", max_lines=36, lines=36)
                 
             with gr.Column():
                 written_paras = gr.Textbox(
@@ -251,6 +263,8 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                     gr.Markdown("### Memory Module\n")
                     short_memory = gr.Textbox(
                         label="Short-Term Memory (editable)", max_lines=5, lines=5)
+                    short_memory_reason = gr.Textbox(
+                        label="Memory Update Reason", max_lines=5, lines=5)                    
                     long_memory = gr.Textbox(
                         label="Long-Term Memory (Generated)", max_lines=6, lines=6)
                 with gr.Box():
@@ -274,7 +288,7 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
         btn_init.click(init, inputs=[novel_input], outputs=[
             novel_current_prompt, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
         btn_step.click(controled_step, inputs=[short_memory, long_memory, selected_instruction, written_paras], outputs=[
-            novel_current_prompt, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
+            novel_current_prompt, short_memory, short_memory_reason, long_memory, written_paras, instruction1, instruction2, instruction3])
         selected_plan.select(on_select, inputs=[
                              instruction1, instruction2, instruction3], outputs=[selected_instruction])
 
@@ -297,6 +311,8 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                     gr.Markdown("### Memory Module\n")
                     short_memory = gr.Textbox(
                         label="Short-Term Memory (editable)", max_lines=5, lines=5)
+                    short_memory_reason = gr.Textbox(
+                        label="Memory Update Reason", max_lines=5, lines=5)                                        
                     long_memory = gr.Textbox(
                         label="Long-Term Memory (Generated)", max_lines=6, lines=6)
 
@@ -317,7 +333,7 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
         btn_init.click(init, inputs=[novel_input], outputs=[
             novel_current_prompt, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
         btn_step.click(step, inputs=[short_memory, long_memory, instruction1, instruction2, instruction3, written_paras], outputs=[
-            novel_current_prompt, short_memory, long_memory, written_paras, selected_plan, instruction1, instruction2, instruction3])
+            novel_current_prompt, short_memory, short_memory_reason, long_memory, written_paras, selected_plan, instruction1, instruction2, instruction3])
 
     demo.queue(concurrency_count=1)
 
