@@ -49,7 +49,7 @@ class RecurrentGPT:
 Now I give you a memory (a brief summary) of 400 words, you should use it to store the key content of what has been written so that you can keep track of very long context. For each time, I will give you your current memory (a brief summary of previous stories. You should use it to store the key content of what has been written so that you can keep track of very long context), the previously written section, and instructions on what to write in the next section. 
 I need you to write:
 1. Output Section: the next section of the novel in similar writing style of Input Section and Input Related Sections. The output section should follow the input instructions.
-2. Output Memory: The updated memory. You should first explain what needs to be added into the memory and why. After that you should write the updated memory. The updated memory should be similar to the input memory except the parts you previously thought that should added or deleted. The updated memory should only store key information.
+2. Output Memory: compose a summary that encapsulates the pivotal information associated with the Input Memory and the Output Section. Begin by detailing what should be integrated into the Input Memory and provide a justification for these additions. Following this, present the revised version of the Input Memory, reflecting the updates.
 3. Output Instruction: instructions of what to write next (after what you have written). You should output 3 different instructions, each is a possible interesting continuation of the story. Each output instruction should contain around 5 sentences. {new_character_prompt}
 Here are the inputs: 
 Input Memory:  
@@ -65,7 +65,7 @@ Now start writing, organize your output by strictly following the output format 
 Output Section: 
 <content of output section>, around 30 - 50 sentences. {writing_style}
 Output Memory: 
-Rational: <string that explain how to update the memory>;
+Rational: <string that explain how to update the memory>
 Updated Memory:
 <string of updated memory>, around 20 sentences
 Output Instruction: 
@@ -73,7 +73,7 @@ Instruction 1: <content for instruction 1>, be concise, interesting and slowly a
 Instruction 2: <content for instruction 2>, be concise, interesting and slowly advance the plot.
 Instruction 3: <content for instruction 3>, be concise, interesting and slowly advance the plot.
 Very important:
-The updated memory should only store key information. You should first explain what needs to be added into or deleted from the memory and why. After that, you start rewrite the input memory to get the updated memory. 
+The updated memory should only store key information. You should first explain what needs to be added into or deleted from the memory and why. After that, you start rewrite the input memory to get the updated memory.
 Make sure to be precise and follow the output format strictly.
 """
         return input_text
