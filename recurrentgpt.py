@@ -19,7 +19,7 @@ class RecurrentGPT:
                 self.long_memory, convert_to_tensor=True)
         self.output = {}
 
-    def prepare_input(self, new_character_prob=0.1, top_k=2):
+    def prepare_input(self, new_character_prob=0.2, top_k=2):
 
         input_paragraph = self.input["output_paragraph"]
         input_instruction = self.input["output_instruction"]
@@ -40,18 +40,18 @@ class RecurrentGPT:
         input_long_term_memory = '\n'.join(
             [f"Related Sections {i+1} :\n" + selected_memory for i, selected_memory in enumerate(top_k_memory)])
         # randomly decide if a new character should be introduced
-        # if random.random() < new_character_prob:
-        #     new_character_prompt = f"If it is reasonable, you can introduce a new character in the output paragrah and add it into the memory."
-        # else:
-        #     new_character_prompt = ""
+        if random.random() < new_character_prob:
+            new_character_prompt = f"If it is reasonable, you can introduce a new character in the instructions."
+        else:
+            new_character_prompt = ""
 
         input_text = f"""{start_prompt}
 Current chapter is: {chapter_name}.
 Now I give you a memory (a brief summary) of 400 words, you should use it to store the key content of what has been written so that you can keep track of very long context. For each time, I will give you your current memory (a brief summary of previous stories. You should use it to store the key content of what has been written so that you can keep track of very long context), the previously written section, and instructions on what to write in the next section. 
 I need you to write:
 1. Output Section: the next section of the novel in similar writing style of Input Section and Input Related Sections. The output section should follow the input instructions.
-2. Output Memory: The updated memory. You should first explain which sentences in the input memory are no longer necessary and why, and then explain what needs to be added into the memory and why. After that you should write the updated memory. The updated memory should be similar to the input memory except the parts you previously thought that should be deleted or added. The updated memory should only store key information. The updated memory should never exceed 20 sentences!
-3. Output Instruction:  instructions of what to write next (after what you have written). You should output 3 different instructions, each is a possible interesting continuation of the story. Each output instruction should contain around 5 sentences
+2. Output Memory: The updated memory. You should first explain what needs to be added into the memory and why. After that you should write the updated memory. The updated memory should be similar to the input memory except the parts you previously thought that should added or deleted. The updated memory should only store key information.
+3. Output Instruction: instructions of what to write next (after what you have written). You should output 3 different instructions, each is a possible interesting continuation of the story. Each output instruction should contain around 5 sentences. {new_character_prompt}
 Here are the inputs: 
 Input Memory:  
 {self.short_memory}
