@@ -219,9 +219,10 @@ def controled_step(short_memory, latest_section, selected_instruction, current_p
     prompt = f"System Prompt:\n{system_prompt}\nUser Prompt:\n{user_prompt}"
 
     memory_update_reason = writer.output['memory_update_reason']
+    related_long_memory =  f"{writer.input['input_long_term_memory']}\n\n[Total size of long memory section is {len(writer.long_memory)}.]"
 
     # short memory, long memory, current written paragraphs, 3 next instructions
-    return prompt, writer.output["output_paragraph"], writer.output['output_memory'], memory_update_reason, parse_instructions(writer.long_memory), current_paras + '\n\n' + writer.output["output_paragraph"], *writer.output['output_instruction']
+    return prompt, writer.output["output_paragraph"], writer.output['output_memory'], memory_update_reason, related_long_memory, current_paras + '\n\n' + writer.output["output_paragraph"], *writer.output['output_instruction']
 
 
 # SelectData is a subclass of EventData
@@ -270,7 +271,7 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                     short_memory_reason = gr.Textbox(
                         label="Memory Update Reason", max_lines=5, lines=5)                    
                     long_memory = gr.Textbox(
-                        label="Long-Term Memory (Generated)", max_lines=6, lines=6)
+                        label="Related Long Memory", max_lines=6, lines=6)
                 with gr.Box():
                     gr.Markdown("### Instruction Module\n")
                     with gr.Row():

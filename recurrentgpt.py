@@ -39,6 +39,8 @@ class RecurrentGPT:
         print(f"Top_k section count: {len(top_k_idx)} Related section count: {len(top_k_memory)}")
         input_long_term_memory = '\n'.join(
             [f"Related Sections {i+1} :\n" + selected_memory for i, selected_memory in enumerate(top_k_memory)])
+        self.input['input_long_term_memory'] = input_long_term_memory
+
         # randomly decide if a new character should be introduced
         if random.random() < new_character_prob:
             new_character_prompt = f"If it is reasonable, you can introduce a new character in the instructions."
