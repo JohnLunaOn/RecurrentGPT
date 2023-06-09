@@ -32,7 +32,10 @@ def get_api_response(content:str, temperature:float=1.0, system:str=None, max_to
         return None
 
 def get_content_between_a_b(a,b,text):
-    return re.search(f"{a}(.*?)\n{b}", text, re.DOTALL).group(1).strip()
+    try:
+        return re.search(f"{a}(.*?)\n{b}", text, re.DOTALL).group(1).strip()
+    except:
+        return None
 
 def get_chapter_init(prompt, temperature, system=None):
     if prompt:

@@ -2,20 +2,19 @@ from utils import get_content_between_a_b, get_api_response
 import torch
 
 import random
-
-from sentence_transformers import  util
-
+from torch import Tensor
+from sentence_transformers import  util, SentenceTransformer
 
 class RecurrentGPT:
 
-    def __init__(self, input, short_memory, long_memory, memory_index, embedder, auto_generate=True):
+    def __init__(self, input, short_memory, long_memory, memory_index, embedder:SentenceTransformer, auto_generate=True):
         self.auto = auto_generate
         self.input = input
         self.short_memory = short_memory
         self.long_memory = long_memory
         self.embedder = embedder
         if self.long_memory and not memory_index:
-            self.memory_index = self.embedder.encode(
+            self.memory_index:Tensor = self.embedder.encode(
                 self.long_memory, convert_to_tensor=True)
         self.output = {}
 
@@ -29,13 +28,15 @@ class RecurrentGPT:
         instruction_embedding = self.embedder.encode(
             input_instruction, convert_to_tensor=True)
 
-        # get the top 3 most similar sections from memory
-
+        # get the top most similar sections from memory
+        print("Long memory size before step: " + str(self.memory_index.size()))
         memory_scores = util.cos_sim(
             instruction_embedding, self.memory_index)[0]
         top_k_idx = torch.topk(memory_scores, k=top_k)[1]
-        top_k_memory = [self.long_memory[idx] for idx in top_k_idx]
-        # combine the top 3 sections
+        top_k_memory = [self.long_memory[idx] for idx in top_k_idx if idx != len(self.long_memory) - 1]
+
+        # combine the top sections
+        print(f"Top_k section count: {len(top_k_idx)} Related section count: {len(top_k_memory)}")
         input_long_term_memory = '\n'.join(
             [f"Related Sections {i+1} :\n" + selected_memory for i, selected_memory in enumerate(top_k_memory)])
         # randomly decide if a new character should be introduced
@@ -141,5 +142,12 @@ Make sure to be precise and follow the output format strictly.
 
         self.output["prompt"] = prompt
         self.output["system_prompt"] = system_prompt
-        self.memory_index = self.embedder.encode(
-            self.long_memory, convert_to_tensor=True)
+
+        # add new tensor
+        new_paragrph = self.long_memory[-1]
+        new_tensor = self.embedder.encode(new_paragrph, convert_to_tensor=True)
+        existing_tensors = list(self.memory_index)
+        existing_tensors.append(new_tensor)
+        self.memory_index = torch.stack(existing_tensors)
+        
+        print("Long memory size after step: " + str(self.memory_index.size()))

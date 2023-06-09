@@ -67,7 +67,7 @@ The characters of the novel:
 """
     promptEnd = f"""
 Follow the format below precisely:
-- Take Example Section 1 exactly as the beginning of the novel, write a name of Chapter 1 and a concise outline for Chapter 1 based on the provided background, character set and the example sections.
+- Begin the novel precisely with the content provided in 'Example Section 1', write a name of Chapter 1 and a concise outline for Chapter 1 based on the provided background, character set and the example sections.
 - Copy Example Section 1 exactly into Section 1, then write the next 2 sections based on your outline, make sure to slowly advance the plot. {writing_style}
 - Write a summary that captures the key information of the 3 sections.
 - Finally, write three different instructions for what to write next, each containing around five sentences. Each instruction should present a possible, interesting continuation of the story.
@@ -87,7 +87,9 @@ Instruction 1: <content for instruction 1>, be concise, interesting and slowly a
 Instruction 2: <content for instruction 2>, be concise, interesting and slowly advance the plot.
 Instruction 3: <content for instruction 3>, be concise, interesting and slowly advance the plot.
 
-Make sure to be precise and follow the output format strictly.
+Very important:
+Make sure to be precise and follow the output format strictly. 
+Begin the novel precisely with the content provided in 'Example Section 1'.
 """
     return promptStart, promptExamples + promptEnd
 
