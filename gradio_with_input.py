@@ -149,7 +149,7 @@ Sections:
     cache["swriter"] = writer
 
     # short memory, long memory, current written paragraphs, 3 next instructions
-    return f"System Prompt:\n{system_prompt}\nUser Prompt:\n{prompt}", init_paragraphs['Summary'], long_memory, written_paras, init_paragraphs['Instruction 1'], init_paragraphs['Instruction 2'], init_paragraphs['Instruction 3']
+    return f"System Prompt:\n{system_prompt}\nUser Prompt:\n{prompt}", init_paragraphs['Section 2'], init_paragraphs['Summary'], long_memory, written_paras, init_paragraphs['Instruction 1'], init_paragraphs['Instruction 2'], init_paragraphs['Instruction 3']
 
 def step(short_memory, long_memory, instruction1, instruction2, instruction3, current_paras, request: gr.Request, ):
     global _CACHE
@@ -194,10 +194,10 @@ def step(short_memory, long_memory, instruction1, instruction2, instruction3, cu
     memory_update_reason = writer.output['memory_update_reason']
 
     # short memory, long memory, current written paragraphs, 3 next instructions
-    return prompt, writer.output['output_memory'], memory_update_reason, long_memory, current_paras + '\n\n' + writer.output['input_paragraph'], human.output['output_instruction'], *writer.output['output_instruction']
+    return prompt, writer.output["output_paragraph"], writer.output['output_memory'], memory_update_reason, long_memory, current_paras + '\n\n' + writer.output['input_paragraph'], human.output['output_instruction'], *writer.output['output_instruction']
 
 
-def controled_step(short_memory, long_memory, selected_instruction, current_paras, request: gr.Request):
+def controled_step(short_memory, latest_section, selected_instruction, current_paras, request: gr.Request):
     global _CACHE
     if current_paras == "":
         return "", "", "", "", "", ""
@@ -210,6 +210,7 @@ def controled_step(short_memory, long_memory, selected_instruction, current_para
         writer:RecurrentGPT = cache["swriter"] 
 
         writer.short_memory = short_memory
+        writer.input['output_paragraph'] = latest_section
         writer.input["output_instruction"] = selected_instruction
         writer.step(temperature=_CACHE['openai_temperature'])
 
@@ -220,7 +221,7 @@ def controled_step(short_memory, long_memory, selected_instruction, current_para
     memory_update_reason = writer.output['memory_update_reason']
 
     # short memory, long memory, current written paragraphs, 3 next instructions
-    return prompt, writer.output['output_memory'], memory_update_reason, parse_instructions(writer.long_memory), current_paras + '\n\n' + writer.output["output_paragraph"], *writer.output['output_instruction']
+    return prompt, writer.output["output_paragraph"], writer.output['output_memory'], memory_update_reason, parse_instructions(writer.long_memory), current_paras + '\n\n' + writer.output["output_paragraph"], *writer.output['output_instruction']
 
 
 # SelectData is a subclass of EventData
@@ -259,6 +260,9 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
             with gr.Column():
                 written_paras = gr.Textbox(
                     label="Written Sections (Generated)", max_lines=25, lines=25)
+                latest_section = gr.Textbox(
+                    label="Latest Section (Editable)", max_lines=10, lines=10)
+                
                 with gr.Box():
                     gr.Markdown("### Memory Module\n")
                     short_memory = gr.Textbox(
@@ -286,9 +290,9 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                 btn_step = gr.Button("Next Step", variant="primary")
 
         btn_init.click(init, inputs=[novel_input], outputs=[
-            novel_current_prompt, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
-        btn_step.click(controled_step, inputs=[short_memory, long_memory, selected_instruction, written_paras], outputs=[
-            novel_current_prompt, short_memory, short_memory_reason, long_memory, written_paras, instruction1, instruction2, instruction3])
+            novel_current_prompt, latest_section, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
+        btn_step.click(controled_step, inputs=[short_memory, latest_section, selected_instruction, written_paras], outputs=[
+            novel_current_prompt, latest_section, short_memory, short_memory_reason, long_memory, written_paras, instruction1, instruction2, instruction3])
         selected_plan.select(on_select, inputs=[
                              instruction1, instruction2, instruction3], outputs=[selected_instruction])
 
@@ -306,6 +310,8 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
             with gr.Column():
                 written_paras = gr.Textbox(
                     label="Written Sections (Generated)", max_lines=25, lines=25)
+                latest_section = gr.Textbox(
+                    label="Latest Section (Editable)", max_lines=10, lines=10)
 
                 with gr.Box():
                     gr.Markdown("### Memory Module\n")
@@ -331,9 +337,9 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                 btn_step = gr.Button("Next Step", variant="primary")
 
         btn_init.click(init, inputs=[novel_input], outputs=[
-            novel_current_prompt, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
+            novel_current_prompt, latest_section, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
         btn_step.click(step, inputs=[short_memory, long_memory, instruction1, instruction2, instruction3, written_paras], outputs=[
-            novel_current_prompt, short_memory, short_memory_reason, long_memory, written_paras, selected_plan, instruction1, instruction2, instruction3])
+            novel_current_prompt, latest_section, short_memory, short_memory_reason, long_memory, written_paras, selected_plan, instruction1, instruction2, instruction3])
 
     demo.queue(concurrency_count=1)
 
