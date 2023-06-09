@@ -264,7 +264,7 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                 with gr.Box():
                     gr.Markdown("### Memory Module\n")
                     short_memory = gr.Textbox(
-                        label="Short-Term Memory (editable)", max_lines=5, lines=5)
+                        label="Short-Term Memory (Editable)", max_lines=5, lines=5)
                     long_memory = gr.Textbox(
                         label="Related Long Memory", max_lines=6, lines=6)
                 with gr.Box():
@@ -281,7 +281,7 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                             selected_plan = gr.Radio(["Instruction 1", "Instruction 2", "Instruction 3"], label="Instruction Selection",)
                         with gr.Column(scale=3, min_width=300):
                             selected_instruction = gr.Textbox(
-                                label="Selected Instruction (editable)", max_lines=5, lines=5)
+                                label="Selected Instruction (Editable)", max_lines=5, lines=5)
 
                 btn_step = gr.Button("Next Step", variant="primary")
 
@@ -312,7 +312,7 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                 with gr.Box():
                     gr.Markdown("### Memory Module\n")
                     short_memory = gr.Textbox(
-                        label="Short-Term Memory (editable)", max_lines=5, lines=5)
+                        label="Short-Term Memory (Editable)", max_lines=5, lines=5)
                     long_memory = gr.Textbox(
                         label="Long-Term Memory (Generated)", max_lines=6, lines=6)
 
@@ -320,11 +320,11 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                     gr.Markdown("### Instruction Module\n")
                     with gr.Row():
                         instruction1 = gr.Textbox(
-                            label="Instruction 1 (editable)", max_lines=6, lines=6)
+                            label="Instruction 1 (Editable)", max_lines=6, lines=6)
                         instruction2 = gr.Textbox(
-                            label="Instruction 2 (editable)", max_lines=6, lines=6)
+                            label="Instruction 2 (Editable)", max_lines=6, lines=6)
                         instruction3 = gr.Textbox(
-                            label="Instruction 3 (editable)", max_lines=6, lines=6)
+                            label="Instruction 3 (Editable)", max_lines=6, lines=6)
                     selected_plan = gr.Textbox(
                         label="Revised Instruction (from last step)", max_lines=3, lines=3)
 
