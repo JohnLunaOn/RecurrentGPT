@@ -133,7 +133,7 @@ Sections:
 {all_paragraphs}"""
     
     long_memory_array = [init_paragraphs['Section 1'], init_paragraphs['Section 2']]
-    long_memory = parse_instructions(long_memory_array)
+    #long_memory = parse_instructions(long_memory_array)
 
     # RecurrentGPT's input is always the last generated paragraph
     writer_start_input = {
@@ -149,7 +149,7 @@ Sections:
     cache["swriter"] = writer
 
     # short memory, long memory, current written paragraphs, 3 next instructions
-    return f"System Prompt:\n{system_prompt}\nUser Prompt:\n{prompt}", init_paragraphs['Section 2'], init_paragraphs['Summary'], long_memory, written_paras, init_paragraphs['Instruction 1'], init_paragraphs['Instruction 2'], init_paragraphs['Instruction 3']
+    return f"System Prompt:\n{system_prompt}\nUser Prompt:\n{prompt}", init_paragraphs['Section 2'], init_paragraphs['Summary'], None, written_paras, init_paragraphs['Instruction 1'], init_paragraphs['Instruction 2'], init_paragraphs['Instruction 3']
 
 def step(short_memory, long_memory, instruction1, instruction2, instruction3, current_paras, request: gr.Request, ):
     global _CACHE
@@ -191,10 +191,8 @@ def step(short_memory, long_memory, instruction1, instruction2, instruction3, cu
     system_prompt = writer.output["system_prompt"]
     prompt = f"System Prompt:\n{system_prompt}\nUser Prompt:\n{user_prompt}"
 
-    memory_update_reason = writer.output['memory_update_reason']
-
     # short memory, long memory, current written paragraphs, 3 next instructions
-    return prompt, writer.output["output_paragraph"], writer.output['output_memory'], memory_update_reason, long_memory, current_paras + '\n\n' + writer.output['input_paragraph'], human.output['output_instruction'], *writer.output['output_instruction']
+    return prompt, writer.output["output_paragraph"], writer.output['output_memory'], long_memory, current_paras + '\n\n' + writer.output['input_paragraph'], human.output['output_instruction'], *writer.output['output_instruction']
 
 
 def controled_step(short_memory, latest_section, selected_instruction, current_paras, request: gr.Request):
@@ -218,11 +216,10 @@ def controled_step(short_memory, latest_section, selected_instruction, current_p
     system_prompt = writer.output["system_prompt"]
     prompt = f"System Prompt:\n{system_prompt}\nUser Prompt:\n{user_prompt}"
 
-    memory_update_reason = writer.output['memory_update_reason']
     related_long_memory =  f"{writer.input['input_long_term_memory']}\n\n[Total size of long memory section is {len(writer.long_memory)}.]"
 
     # short memory, long memory, current written paragraphs, 3 next instructions
-    return prompt, writer.output["output_paragraph"], writer.output['output_memory'], memory_update_reason, related_long_memory, current_paras + '\n\n' + writer.output["output_paragraph"], *writer.output['output_instruction']
+    return prompt, writer.output["output_paragraph"], writer.output['output_memory'], related_long_memory, current_paras + '\n\n' + writer.output["output_paragraph"], *writer.output['output_instruction']
 
 
 # SelectData is a subclass of EventData
@@ -268,8 +265,6 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                     gr.Markdown("### Memory Module\n")
                     short_memory = gr.Textbox(
                         label="Short-Term Memory (editable)", max_lines=5, lines=5)
-                    short_memory_reason = gr.Textbox(
-                        label="Memory Update Reason", max_lines=5, lines=5)                    
                     long_memory = gr.Textbox(
                         label="Related Long Memory", max_lines=6, lines=6)
                 with gr.Box():
@@ -293,7 +288,7 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
         btn_init.click(init, inputs=[novel_input], outputs=[
             novel_current_prompt, latest_section, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
         btn_step.click(controled_step, inputs=[short_memory, latest_section, selected_instruction, written_paras], outputs=[
-            novel_current_prompt, latest_section, short_memory, short_memory_reason, long_memory, written_paras, instruction1, instruction2, instruction3])
+            novel_current_prompt, latest_section, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
         selected_plan.select(on_select, inputs=[
                              instruction1, instruction2, instruction3], outputs=[selected_instruction])
 
@@ -318,8 +313,6 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
                     gr.Markdown("### Memory Module\n")
                     short_memory = gr.Textbox(
                         label="Short-Term Memory (editable)", max_lines=5, lines=5)
-                    short_memory_reason = gr.Textbox(
-                        label="Memory Update Reason", max_lines=5, lines=5)                                        
                     long_memory = gr.Textbox(
                         label="Long-Term Memory (Generated)", max_lines=6, lines=6)
 
@@ -340,7 +333,7 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
         btn_init.click(init, inputs=[novel_input], outputs=[
             novel_current_prompt, latest_section, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
         btn_step.click(step, inputs=[short_memory, long_memory, instruction1, instruction2, instruction3, written_paras], outputs=[
-            novel_current_prompt, latest_section, short_memory, short_memory_reason, long_memory, written_paras, selected_plan, instruction1, instruction2, instruction3])
+            novel_current_prompt, latest_section, short_memory, long_memory, written_paras, selected_plan, instruction1, instruction2, instruction3])
 
     demo.queue(concurrency_count=1)
 
