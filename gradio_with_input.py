@@ -60,15 +60,15 @@ The characters of the novel:
 
     exampleStr = ""
     for i, example in enumerate(novel_settings['examples']):
-        exampleStr += "Example Section " + str(i+1) + ":\n"
+        exampleStr += "Example " + str(i+1) + ":\n"
         exampleStr += example + "\n"
     promptExamples = f"""The example sections of the novel:
 {exampleStr}
 """
     promptEnd = f"""
 Follow the format below precisely:
-- Begin the novel precisely with the content provided in 'Example Section 1', write a name of Chapter 1 and a concise outline for Chapter 1 based on the provided background, character set and the example sections.
-- Copy Example Section 1 exactly into Section 1, then write the next 1 sections based on your outline, make sure to slowly advance the plot. {writing_style}
+- Begin the novel precisely with the content provided in 'Example 1', write a name of Chapter 1 and a concise outline for Chapter 1 based on the provided background, character set and the example sections.
+- Copy 'Example 1' exactly into Section 1, then write the next 1 sections based on your outline, make sure to slowly advance the plot. {writing_style}
 - Write a summary that captures the key information of the 2 sections.
 - Finally, write three different instructions for what to write next, each containing around five sentences. Each instruction should present a possible, interesting continuation of the story.
 The output format should follow these guidelines:
@@ -87,7 +87,7 @@ Instruction 3: <content for instruction 3>, be concise, interesting and slowly a
 
 Very important:
 Make sure to be precise and follow the output format strictly. 
-Begin the novel precisely with the content provided in 'Example Section 1'.
+Begin the novel precisely with the content provided in 'Example 1'.
 """
     return promptStart, promptExamples + promptEnd
 
