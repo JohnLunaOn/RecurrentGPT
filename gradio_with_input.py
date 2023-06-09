@@ -68,8 +68,8 @@ The characters of the novel:
     promptEnd = f"""
 Follow the format below precisely:
 - Begin the novel precisely with the content provided in 'Example Section 1', write a name of Chapter 1 and a concise outline for Chapter 1 based on the provided background, character set and the example sections.
-- Copy Example Section 1 exactly into Section 1, then write the next 2 sections based on your outline, make sure to slowly advance the plot. {writing_style}
-- Write a summary that captures the key information of the 3 sections.
+- Copy Example Section 1 exactly into Section 1, then write the next 1 sections based on your outline, make sure to slowly advance the plot. {writing_style}
+- Write a summary that captures the key information of the 2 sections.
 - Finally, write three different instructions for what to write next, each containing around five sentences. Each instruction should present a possible, interesting continuation of the story.
 The output format should follow these guidelines:
 Chapter 1: <name of Chapter 1>
@@ -79,8 +79,6 @@ Section 1:
 <content for section 1>
 Section 2:
 <content for section 2>
-Section 3:
-<content for section 3>
 Summary:
 <content of summary>
 Instruction 1: <content for instruction 1>, be concise, interesting and slowly advance the plot.
@@ -116,8 +114,8 @@ def init(novel_input, request: gr.Request):
     init_paragraphs = get_chapter_init(prompt=prompt, system=system_prompt, temperature=_CACHE['openai_temperature'])
     # print(init_paragraphs)
     start_input_to_human = {
-        'output_paragraph': init_paragraphs['Section 3'],
-        'input_paragraph': '\n\n'.join([init_paragraphs['Section 1'], init_paragraphs['Section 2']]),
+        'output_paragraph': init_paragraphs['Section 2'],
+        'input_paragraph': init_paragraphs['Section 1'],
         'output_memory': init_paragraphs['Summary'],
         "output_instruction": [init_paragraphs['Instruction 1'], init_paragraphs['Instruction 2'], init_paragraphs['Instruction 3']]
     }
@@ -125,7 +123,7 @@ def init(novel_input, request: gr.Request):
     cache['start_input_to_human'] = start_input_to_human
     cache['init_paragraphs'] = init_paragraphs
 
-    all_paragraphs = '\n\n'.join([init_paragraphs['Section 1'], init_paragraphs['Section 2'], init_paragraphs['Section 3']])
+    all_paragraphs = '\n\n'.join([init_paragraphs['Section 1'], init_paragraphs['Section 2']])
     written_paras = f"""Chapter: {init_paragraphs['Chapter name']}
 
 Outline: {init_paragraphs['Outline']}
@@ -134,12 +132,12 @@ Sections:
 
 {all_paragraphs}"""
     
-    long_memory_array = [init_paragraphs['Section 1'], init_paragraphs['Section 2'], init_paragraphs['Section 3']]
+    long_memory_array = [init_paragraphs['Section 1'], init_paragraphs['Section 2']]
     long_memory = parse_instructions(long_memory_array)
 
     # RecurrentGPT's input is always the last generated paragraph
     writer_start_input = {
-        "output_paragraph": init_paragraphs['Section 3'],
+        "output_paragraph": init_paragraphs['Section 2'],
         "output_instruction": None,
         "writing_style": cache['writing_style'],
         "novel_start_prompt": cache['novel_start_prompt'],

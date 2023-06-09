@@ -143,11 +143,14 @@ Make sure to be precise and follow the output format strictly.
         self.output["prompt"] = prompt
         self.output["system_prompt"] = system_prompt
 
+        self.appendLongMemory(self.long_memory[-1])
+
+    def appendLongMemory(self, new_paragraph):
         # add new tensor
-        new_paragrph = self.long_memory[-1]
-        new_tensor = self.embedder.encode(new_paragrph, convert_to_tensor=True)
+        new_tensor = self.embedder.encode(new_paragraph, convert_to_tensor=True)
         existing_tensors = list(self.memory_index)
         existing_tensors.append(new_tensor)
         self.memory_index = torch.stack(existing_tensors)
         
-        print("Long memory size after step: " + str(self.memory_index.size()))
+        print("Long memory size after append: " + str(self.memory_index.size()))
+
