@@ -23,7 +23,6 @@ class RecurrentGPT:
         input_paragraph = self.input["output_paragraph"]
         input_instruction = self.input["output_instruction"]
         writing_style = self.input["writing_style"]
-        chapter_name = self.input['chapter_name']
 
         instruction_embedding = self.embedder.encode(
             input_instruction, convert_to_tensor=True)

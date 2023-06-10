@@ -188,7 +188,7 @@ def parse_output(writer:RecurrentGPT):
     # short memory, long memory, current written paragraphs, 3 next instructions
     return prompt, writer.output["output_paragraph"], updated_memory, related_long_memory, all_paras, *writer.output['output_instruction']
 
-def redo(request: gr.Request):
+def redo(selected_instruction, request: gr.Request):
     global _CACHE
     cache = get_cache(request)
 
@@ -197,6 +197,7 @@ def redo(request: gr.Request):
         return "", "", "", "", "", ""
     else:
         writer:RecurrentGPT = cache["swriter"]
+        writer.input["output_instruction"] = selected_instruction
         writer.step(temperature=_CACHE['openai_temperature'])
 
     return parse_output(writer)
@@ -269,7 +270,7 @@ with gr.Blocks(title="RecurrentGPT", css="footer {visibility: hidden}", theme="d
             novel_current_prompt, latest_section, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
         btn_step.click(controled_step, inputs=[short_memory, latest_section, selected_instruction, written_paras], outputs=[
             novel_current_prompt, latest_section, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
-        btn_redo.click(redo, inputs=[], outputs=[
+        btn_redo.click(redo, inputs=[selected_instruction], outputs=[
             novel_current_prompt, latest_section, short_memory, long_memory, written_paras, instruction1, instruction2, instruction3])
 
         selected_plan.select(on_select, inputs=[
