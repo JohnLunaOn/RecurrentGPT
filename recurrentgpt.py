@@ -50,10 +50,7 @@ class RecurrentGPT:
 
         input_text = f"""Current chapter is: {chapter_name}.
 Now I give you a Input Summary (a brief summary of previous stories), you should use it to get the key contents of what has been written so that you can keep track of very long context.
-I need you to write:
-1. Output Section: the next section of the novel in similar writing style of Input Section and Input Related Sections. The output section should follow the input instructions.
-2. Updated Summary: compose a summary that encapsulates the pivotal information associated with the Input Summary and the Output Section. The updated summary should only store key information. 
-3. Output Instructions: instructions of what to write next (after what you have written). You should output 3 different instructions, each is a possible interesting continuation of the story. Each output instruction should contain around 5 sentences. {new_character_prompt}
+I also give you Input Section (the current section of the novel) and Input Instruction (the instruction to write next novel), you should use them to write next section of the novel.
 Here are the inputs: 
 Input Summary:  
 {self.short_memory}
@@ -64,18 +61,20 @@ Input Instruction:
 Input Related Sections:
 {input_long_term_memory}
 
-Now start writing, organize your output by strictly following the output format as below:
+I need you to write:
+1. Output Section: the next section of the novel in similar writing style of Input Section and Input Related Sections. The output section should follow the input instructions.
+2. Output Summary: summarize the key information of the Output Section you've written.
+3. Output Instructions: instructions of what to write next (after what you have written). You should output 3 different instructions, each is a possible interesting continuation of the story. Each output instruction should contain around 5 sentences. {new_character_prompt}
+Now start writing your output by strictly following the output format as below:
 Output Section: 
-<content of output section>, around 30 - 50 sentences. {writing_style}
-Updated Summary: 
-<string of updated summary>, around 20 sentences
+<content of output section>, {writing_style}
+Output Summary: 
+<content of output summary>, summarize the key information of the Output Section.
 Output Instructions: 
 Instruction 1: <content for instruction 1>, be concise, interesting and slowly advance the plot.
 Instruction 2: <content for instruction 2>, be concise, interesting and slowly advance the plot.
 Instruction 3: <content for instruction 3>, be concise, interesting and slowly advance the plot.
 
-Very important:
-The updated summary should only store key information. You should first review what needs to be added into or deleted from the input summary then produce the updated version.
 Make sure to be precise and follow the output format strictly.
 """
         return input_text
@@ -83,11 +82,11 @@ Make sure to be precise and follow the output format strictly.
     def parse_output(self, output):
         try:
             output_paragraph = get_content_between_a_b(
-                'Output Section:', 'Updated Summary', output)
+                'Output Section:', 'Output Summary:', output)
             # memory_update_reason = get_content_between_a_b(
             #     'Rationale:', 'Updated:', output)            
             output_memory_updated = get_content_between_a_b(
-                'Updated Summary:', 'Output Instructions:', output)
+                'Output Summary:', 'Output Instructions:', output)
             self.short_memory = output_memory_updated
             ins_1 = get_content_between_a_b(
                 'Instruction 1:', 'Instruction 2', output)

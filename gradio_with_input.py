@@ -217,9 +217,10 @@ def controled_step(short_memory, latest_section, selected_instruction, current_p
     prompt = f"System Prompt:\n{system_prompt}\nUser Prompt:\n{user_prompt}"
 
     related_long_memory =  f"{writer.input['input_long_term_memory']}\n\n[Total size of long memory section is {len(writer.long_memory)}.]"
+    updated_memory = short_memory +'\n'+ writer.output['output_memory']
 
     # short memory, long memory, current written paragraphs, 3 next instructions
-    return prompt, writer.output["output_paragraph"], writer.output['output_memory'], related_long_memory, current_paras + '\n\n' + writer.output["output_paragraph"], *writer.output['output_instruction']
+    return prompt, writer.output["output_paragraph"], updated_memory, related_long_memory, current_paras + '\n\n' + writer.output["output_paragraph"], *writer.output['output_instruction']
 
 
 # SelectData is a subclass of EventData
