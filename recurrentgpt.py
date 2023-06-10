@@ -33,10 +33,10 @@ class RecurrentGPT:
         memory_scores = util.cos_sim(
             instruction_embedding, self.memory_index)[0]
         top_k_idx = torch.topk(memory_scores, k=top_k)[1]
-        top_k_memory = [self.long_memory[idx] for idx in top_k_idx if idx != len(self.long_memory) - 1]
+        top_k_memory = [self.long_memory[idx] for idx in top_k_idx]
 
         # combine the top sections
-        print(f"Top_k section count: {len(top_k_idx)} Related section count: {len(top_k_memory)}")
+        # print(f"Top_k section count: {len(top_k_idx)} Related section count: {len(top_k_memory)}")
         input_long_term_memory = '\n'.join(
             [f"Related Section {i+1} :\n" + selected_memory for i, selected_memory in enumerate(top_k_memory)])
         self.input['input_long_term_memory'] = input_long_term_memory
@@ -48,9 +48,8 @@ class RecurrentGPT:
         else:
             new_character_prompt = ""
 
-        input_text = f"""Current chapter is: {chapter_name}.
-Now I give you a Input Summary (a brief summary of previous stories), you should use it to get the key contents of what has been written so that you can keep track of very long context.
-I also give you Input Section (the current section of the novel) and Input Instruction (the instruction to write next novel), you should use them to write next section of the novel.
+        input_text = f"""Now I give you a Input Summary (a brief summary of previous stories), you should use it to get the key contents of what has been written so that you can keep track of very long context.
+I also give you Input Section (the current section of the novel) and Input Instruction (the instructions to write next section), you should use them to write next section of the novel.
 Here are the inputs: 
 Input Summary:  
 {self.short_memory}
@@ -62,7 +61,7 @@ Input Related Sections:
 {input_long_term_memory}
 
 I need you to write:
-1. Output Section: the next section of the novel in similar writing style of Input Section and Input Related Sections. The output section should follow the input instructions.
+1. Output Section: the next section of the novel in similar writing style of Input Section and Input Related Sections. Make sure to slowly advance the plot. The output section should follow the input instructions.
 2. Output Summary: summarize the key information of the Output Section you've written.
 3. Output Instructions: instructions of what to write next (after what you have written). You should output 3 different instructions, each is a possible interesting continuation of the story. Each output instruction should contain around 5 sentences. {new_character_prompt}
 Now start writing your output by strictly following the output format as below:
@@ -70,10 +69,9 @@ Output Section:
 <content of output section>, {writing_style}
 Output Summary: 
 <content of output summary>, summarize the key information of the Output Section.
-Output Instructions: 
-Instruction 1: <content for instruction 1>, be concise, interesting and slowly advance the plot.
-Instruction 2: <content for instruction 2>, be concise, interesting and slowly advance the plot.
-Instruction 3: <content for instruction 3>, be concise, interesting and slowly advance the plot.
+Output Instruction 1: <content for instruction 1>, be concise, interesting and slowly advance the plot.
+Output Instruction 2: <content for instruction 2>, be concise, interesting and slowly advance the plot.
+Output Instruction 3: <content for instruction 3>, be concise, interesting and slowly advance the plot.
 
 Make sure to be precise and follow the output format strictly.
 """
@@ -86,16 +84,15 @@ Make sure to be precise and follow the output format strictly.
             # memory_update_reason = get_content_between_a_b(
             #     'Rationale:', 'Updated:', output)            
             output_memory_updated = get_content_between_a_b(
-                'Output Summary:', 'Output Instructions:', output)
-            self.short_memory = output_memory_updated
+                'Output Summary:', 'Output Instruction 1:', output)
             ins_1 = get_content_between_a_b(
-                'Instruction 1:', 'Instruction 2', output)
+                'Output Instruction 1:', 'Output Instruction 2', output)
             ins_2 = get_content_between_a_b(
-                'Instruction 2:', 'Instruction 3', output)
+                'Output Instruction 2:', 'Output Instruction 3', output)
             lines = output.splitlines()
             # content of Instruction 3 may be in the same line with I3 or in the next line
-            if lines[-1] != '\n' and lines[-1].startswith('Instruction 3'):
-                ins_3 = lines[-1][len("Instruction 3:"):]
+            if lines[-1] != '\n' and lines[-1].startswith('Output Instruction 3'):
+                ins_3 = lines[-1][len("Output Instruction 3:"):]
             elif lines[-1] != '\n':
                 ins_3 = lines[-1]
 
@@ -114,11 +111,10 @@ Make sure to be precise and follow the output format strictly.
             return None
 
     def step(self, temperature, response_file=None):
-
         prompt = self.prepare_input()
         system_prompt = self.input['novel_start_prompt']
 
-        print(prompt+'\n'+'\n')
+        print(prompt+'\n\n')
 
         response = get_api_response(content=prompt, system=system_prompt, temperature=temperature)
 
@@ -130,19 +126,17 @@ Make sure to be precise and follow the output format strictly.
             with open(response_file, 'a', encoding='utf-8') as f:
                 f.write(f"Writer's output here:\n{response}\n\n")
 
-        if self.auto:
-            # for auto-generation, append the input into long memory because current output need to be extended
-            self.long_memory.append(self.input["output_paragraph"])
-        elif self.output["output_paragraph"]:
-            # otherwise append current output into long memory
-            self.long_memory.append(self.output["output_paragraph"])
-            # and change output to next input
-            self.input["output_paragraph"] = self.output["output_paragraph"]
+        # if self.auto:
+        #     # for auto-generation, append the input into long memory because current output need to be extended
+        #     self.long_memory.append(self.input["output_paragraph"])
+        # elif self.output["output_paragraph"]:
+        #     # otherwise append current output into long memory
+        #     self.long_memory.append(self.output["output_paragraph"])
+        #     # and change output to next input
+        #     self.input["output_paragraph"] = self.output["output_paragraph"]
 
         self.output["prompt"] = prompt
         self.output["system_prompt"] = system_prompt
-
-        self.appendLongMemory(self.long_memory[-1])
 
     def appendLongMemory(self, new_paragraph):
         # add new tensor
@@ -152,4 +146,8 @@ Make sure to be precise and follow the output format strictly.
         self.memory_index = torch.stack(existing_tensors)
         
         print("Long memory size after append: " + str(self.memory_index.size()))
+
+        # add text
+        self.long_memory.append(new_paragraph)
+
 

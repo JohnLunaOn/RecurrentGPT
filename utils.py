@@ -56,8 +56,8 @@ def get_chapter_init(prompt, temperature, system=None):
         "Instruction 2":"", 
         "Instruction 3":""    
     }
-    paragraphs['Chapter name'] = get_content_between_a_b('Chapter 1:','Outline',response)
-    paragraphs['Outline'] = get_content_between_a_b('Outline:','Section',response)
+    # paragraphs['Chapter name'] = get_content_between_a_b('Chapter name:','Start Instruction:',response)
+    # paragraphs['Outline'] = get_content_between_a_b('Start Instruction:','Section 1:',response)
     paragraphs['Section 1'] = get_content_between_a_b('Section 1:','Section 2:',response)
     paragraphs['Section 2'] = get_content_between_a_b('Section 2:','Summary',response)
     paragraphs['Summary'] = get_content_between_a_b('Summary:','Instruction 1',response)
