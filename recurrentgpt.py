@@ -32,7 +32,9 @@ class RecurrentGPT:
         memory_scores = util.cos_sim(
             instruction_embedding, self.memory_index)[0]
         top_k_idx = torch.topk(memory_scores, k=top_k)[1]
-        top_k_memory = [self.long_memory[idx] for idx in top_k_idx]
+        top_k_memory = [self.long_memory[idx] for idx in top_k_idx if idx != len(self.long_memory) - 1]
+
+        print(f"memory scores: {memory_scores}")
 
         # combine the top sections
         # print(f"Top_k section count: {len(top_k_idx)} Related section count: {len(top_k_memory)}")
